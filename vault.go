@@ -53,20 +53,29 @@ type encryptionKeys struct {
 	List []encKeyEntry
 }
 
-func OpenVault(vaultPath string) (Vault, error) {
+func CheckVault(vaultPath string) error {
 	_, err := os.Stat(vaultPath)
 	if err != nil {
-		return Vault{}, err
+		return err
 	}
 
 	if path.Ext(vaultPath) != ".agilekeychain" {
-		return Vault{}, errors.New("Unknown or unsupported 1Password vault format")
+		return errors.New("Unknown or unsupported 1Password vault format")
 	}
 
 	dataDir := vaultPath + "/data/default"
 	_, err = os.Stat(dataDir)
 	if err != nil {
-		return Vault{}, errors.New("Unable to find data dir in vault")
+		return errors.New("Unable to find data dir in vault")
+	}
+
+	return nil
+}
+
+func OpenVault(vaultPath string) (Vault, error) {
+	err := CheckVault(vaultPath)
+	if err != nil {
+		return Vault{}, err
 	}
 
 	return Vault{
