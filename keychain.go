@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	const keyChainDir = "/home/robert/Dropbox/1Password/1Password.agilekeychain/data/default"
+	const keyChainDir = "/home/robert/Dropbox/1Password/1Password.agilekeychain"
 
 	stdinReader := bufio.NewScanner(os.Stdin)
 	stdinReader.Scan()
@@ -32,13 +32,13 @@ func main() {
 	}
 
 	for _, item := range items {
-		plainText, err := item.Decrypt()
+		fmt.Printf("%s: %s: %s\n", item.Title, item.Uuid, item.ContentsHash)
+		decrypted, err := item.Decrypt()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to decrypt item: %s: %v", item.Title, err)
 			continue
 		}
-		fmt.Printf("Decrypted item %s\n", item.Title)
-		fmt.Println(plainText)
+		fmt.Println(decrypted)
 	}
 }
 

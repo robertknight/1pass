@@ -4,7 +4,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha1"
-	//"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -46,7 +45,7 @@ type encKeyEntry struct {
 	Identifier string
 	Iterations int
 	Level      string
-	decryptedKey []byte
+	Validation []byte
 }
 
 // struct for encryptionKeys.js
@@ -54,9 +53,24 @@ type encryptionKeys struct {
 	List []encKeyEntry
 }
 
-func OpenVault(path string) (Vault, error) {
+func OpenVault(vaultPath string) (Vault, error) {
+	_, err := os.Stat(vaultPath)
+	if err != nil {
+		return Vault{}, err
+	}
+
+	if path.Ext(vaultPath) != ".agilekeychain" {
+		return Vault{}, errors.New("Unknown or unsupported 1Password vault format")
+	}
+
+	dataDir := vaultPath + "/data/default"
+	_, err = os.Stat(dataDir)
+	if err != nil {
+		return Vault{}, errors.New("Unable to find data dir in vault")
+	}
+
 	return Vault{
-		Path: path,
+		Path: vaultPath + "/data/default",
 		keys: map[string][]byte{},
 	}, nil
 }
@@ -70,14 +84,18 @@ func (vault *Vault) Unlock(pwd string) error {
 
 	for _, entry := range keyList.List {
 		if len(entry.Data) != 1056 {
-			return errors.New(fmt.Sprintf("Unexpected encrypted key length: %d", len(entry.Data)))
+			return fmt.Errorf("Unexpected encrypted key length: %d", len(entry.Data))
 		}
 
-		salt := entry.Data[8:16]
-		encryptedKey := entry.Data[16:]
-		decryptedKey, err := decryptKey([]byte(pwd), encryptedKey, salt, entry.Iterations)
+		if entry.Level != "SL5" {
+			// TESTING
+			continue
+		}
+
+		salt, encryptedKey := extractSaltAndCipherText(entry.Data)
+		decryptedKey, err := decryptKey([]byte(pwd), encryptedKey, salt, entry.Iterations, entry.Validation)
 		if err != nil {
-			return errors.New("Failed to decrypt derived key\n")
+			return fmt.Errorf("Failed to decrypt derived key: %v", err)
 		}
 		vault.keys[entry.Level] = decryptedKey
 	}
@@ -114,38 +132,78 @@ func (item *Item) Decrypt() (string, error) {
 		return "", errors.New("No decryption key found for item")
 	}
 	key, iv := openSslKey(itemKey, item.Encrypted[8:16])
-	decryptedData := aesCbcDecrypt(key, item.Encrypted[16:], iv)
+	decryptedData, err := aesCbcDecrypt(key, item.Encrypted[16:], iv)
+	if err != nil {
+		return "", fmt.Errorf("Failed to decrypt item: %v", err)
+	}
 	return string(decryptedData), nil
 }
 
 
-func aesCbcDecrypt(key []byte, cipherText []byte, iv []byte) []byte {
+func aesCbcDecrypt(key []byte, cipherText []byte, iv []byte) ([]byte,error) {
+	if len(key) != Aes128KeyLen {
+		return nil, fmt.Errorf("Incorrect key length")
+	}
+	if len(iv) != Aes128KeyLen {
+		return nil, fmt.Errorf("Incorrect IV length")
+	}
 	aesCipher, err := aes.NewCipher(key)
 	if err != nil {
-		panic("Failed to initialize AES cipher")
+		return nil, fmt.Errorf("Failed to initialize AES cipher")
 	}
 	cbcDecrypter := cipher.NewCBCDecrypter(aesCipher, iv)
 	plainText := make([]byte, len(cipherText))
 	cbcDecrypter.CryptBlocks(plainText, cipherText)
-	return plainText
+
+	plainText, err = aesStripPadding(plainText)
+	if err != nil {
+		return nil, err
+	}
+	return plainText, nil
 }
 
-func decryptKey(masterPwd []byte, key []byte, salt []byte, iterCount int) ([]byte, error) {
+func aesStripPadding(data []byte) ([]byte,error) {
+	const blockLen = 16
+	if len(data) % blockLen != 0 {
+		return nil, fmt.Errorf("Decrypted data block length is not a multiple of %d", blockLen)
+	}
+	paddingLen := int(data[len(data)-1])
+	if paddingLen > 16 {
+		return nil, fmt.Errorf("Invalid last block padding length: %d", paddingLen)
+	}
+	return data[:len(data) - paddingLen], nil
+}
+
+func extractSaltAndCipherText(data []byte) ([]byte,[]byte) {
+	if string(data[0:8]) == "Salted__" {
+		return data[8:16], data[16:]
+	} else {
+		return nil, data
+	}
+}
+
+func decryptKey(masterPwd []byte, encryptedKey []byte, salt []byte, iterCount int, validation []byte) ([]byte, error) {
 	const keyLen = 32
 	derivedKey := pbkdf2.Key(masterPwd, salt, iterCount, keyLen, sha1.New)
 
 	aesKey := derivedKey[0:16]
 	iv := derivedKey[16:32]
-	decryptedKey := aesCbcDecrypt(aesKey, key, iv)
-
-	// check that derived key ends with padding
-	paddingLen := 16
-	for i := 0; i < paddingLen; i++ {
-		if decryptedKey[len(decryptedKey)-i-1] != 0x10 {
-			return nil, errors.New("Decryption failed")
-		}
+	decryptedKey, err := aesCbcDecrypt(aesKey, encryptedKey, iv)
+	if err != nil {
+		return nil, err
 	}
-	decryptedKey = decryptedKey[0:len(decryptedKey)-paddingLen]
+
+	validationSalt, validationCipherText := extractSaltAndCipherText(validation)
+
+	validationAesKey, validationIv := openSslKey(decryptedKey, validationSalt)
+	decryptedValidation, err := aesCbcDecrypt(validationAesKey, validationCipherText, validationIv)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to decrypt validation: %v", err)
+	}
+
+	if string(decryptedValidation) != string(decryptedKey) {
+		return nil, errors.New("Validation decryption failed")
+	}
 
 	return decryptedKey, nil
 }
