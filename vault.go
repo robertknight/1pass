@@ -3,13 +3,13 @@ package main
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/md5"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"crypto/md5"
 	"path"
 
 	"code.google.com/p/go.crypto/pbkdf2"
@@ -86,7 +86,7 @@ func OpenVault(vaultPath string) (Vault, error) {
 
 func (vault *Vault) Unlock(pwd string) error {
 	var keyList encryptionKeys
-	err := readJsonFile(vault.Path + "/encryptionKeys.js", &keyList)
+	err := readJsonFile(vault.Path+"/encryptionKeys.js", &keyList)
 	if err != nil {
 		return errors.New("Failed to read encryption key file")
 	}
@@ -120,8 +120,8 @@ func (vault *Vault) ListItems() ([]Item, error) {
 	}
 	for _, item := range dirEntries {
 		if path.Ext(item.Name()) == ".1password" {
-			itemData := Item{ vault : vault }
-			err := readJsonFile(vault.Path + "/" + item.Name(), &itemData)
+			itemData := Item{vault: vault}
+			err := readJsonFile(vault.Path+"/"+item.Name(), &itemData)
 			if err != nil {
 				fmt.Printf("Failed to read item: %s: %v\n", item.Name(), err)
 			} else {
@@ -148,8 +148,18 @@ func (item *Item) Decrypt() (string, error) {
 	return string(decryptedData), nil
 }
 
+func (item *Item) Type() string {
+	switch item.TypeName {
+	case "wallet.financial.CreditCard":
+		return "Credit Card"
+	case "webforms.WebForm":
+		return "Login"
+	default:
+		return "Unknown"
+	}
+}
 
-func aesCbcDecrypt(key []byte, cipherText []byte, iv []byte) ([]byte,error) {
+func aesCbcDecrypt(key []byte, cipherText []byte, iv []byte) ([]byte, error) {
 	if len(key) != Aes128KeyLen {
 		return nil, fmt.Errorf("Incorrect key length")
 	}
@@ -171,19 +181,19 @@ func aesCbcDecrypt(key []byte, cipherText []byte, iv []byte) ([]byte,error) {
 	return plainText, nil
 }
 
-func aesStripPadding(data []byte) ([]byte,error) {
+func aesStripPadding(data []byte) ([]byte, error) {
 	const blockLen = 16
-	if len(data) % blockLen != 0 {
+	if len(data)%blockLen != 0 {
 		return nil, fmt.Errorf("Decrypted data block length is not a multiple of %d", blockLen)
 	}
 	paddingLen := int(data[len(data)-1])
 	if paddingLen > 16 {
 		return nil, fmt.Errorf("Invalid last block padding length: %d", paddingLen)
 	}
-	return data[:len(data) - paddingLen], nil
+	return data[:len(data)-paddingLen], nil
 }
 
-func extractSaltAndCipherText(data []byte) ([]byte,[]byte) {
+func extractSaltAndCipherText(data []byte) ([]byte, []byte) {
 	if string(data[0:8]) == "Salted__" {
 		return data[8:16], data[16:]
 	} else {
@@ -233,19 +243,18 @@ func readJsonFile(path string, out interface{}) error {
 	return nil
 }
 
-func openSslKey(password []byte, salt []byte) (key []byte, iv[]byte) {
+func openSslKey(password []byte, salt []byte) (key []byte, iv []byte) {
 	const rounds = 2
 	data := append(password, salt...)
 	md5Hashes := make([][]byte, rounds)
 
 	sum := md5.Sum(data)
 	md5Hashes[0] = append([]byte{}, sum[:]...)
-	for i := 1 ; i < rounds ; i++ {
+	for i := 1; i < rounds; i++ {
 		sum = md5.Sum(append(md5Hashes[i-1], data...))
-		md5Hashes[i] = append([]byte{},sum[:]...)
+		md5Hashes[i] = append([]byte{}, sum[:]...)
 	}
 	key = md5Hashes[0]
 	iv = md5Hashes[1]
 	return
 }
-
