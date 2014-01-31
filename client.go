@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
@@ -9,7 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	// TODO: Use ReadPassword() from "code.google.com/p.go.crypto/ssh/terminal"
+	"io/ioutil"
+	"code.google.com/p/go.crypto/ssh/terminal"
 )
 
 // attempt to locate the keychain directory automatically
@@ -91,6 +91,13 @@ func lookupItems(vault *Vault, pattern string) ([]Item, error) {
 	return matches, nil
 }
 
+func positionalArgs(args []string, names []string) ([]string, error) {
+	if len(args) < len(names) {
+		return nil, fmt.Errorf("Missing arguments: %s", strings.Join(names[len(args):], ", "))
+	}
+	return args, nil
+}
+
 func main() {
 	flag.Parse()
 
@@ -111,9 +118,14 @@ func main() {
 	// unlock vault
 	fmt.Printf("Using keychain in %s\n", keyChainDir)
 	fmt.Printf("Master password: ")
-	stdinReader := bufio.NewScanner(os.Stdin)
-	stdinReader.Scan()
-	masterPwd := stdinReader.Text()
+	//stdinReader := bufio.NewScanner(os.Stdin)
+	//stdinReader.Scan()
+	//masterPwd := stdinReader.Text()
+	masterPwd, err := terminal.ReadPassword(0)
+	if err != nil {
+		os.Exit(1)
+	}
+	fmt.Println()
 
 	vault, err := OpenVault(keyChainDir)
 	if err != nil {
@@ -121,7 +133,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = vault.Unlock(masterPwd)
+	err = vault.Unlock(string(masterPwd))
 	if err != nil {
 		fmt.Printf("Unable to unlock vault: %v\n", err)
 		os.Exit(1)
@@ -131,17 +143,39 @@ func main() {
 	case "list":
 		listItems(&vault)
 	case "show":
-		if len(flag.Args()) < 2 {
-			fmt.Fprintf(os.Stderr, "No pattern specified\n")
+		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern"})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
-		pattern := flag.Args()[1]
+		pattern := posArgs[0]
 		items, err := lookupItems(&vault, pattern)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to lookup items: %v\n", err)
+			os.Exit(1)
 		}
 		for _, item := range items {
 			displayItem(item)
 		}
+	case "add":
+		posArgs, err := positionalArgs(flag.Args()[1:], []string{"title", "type", "content"})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+
+		title := posArgs[0]
+		itemType := posArgs[1]
+		contentPath := posArgs[2]
+		contentFile, err := os.Open(contentPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to read %s: %v\n", contentPath, err)
+			os.Exit(1)
+		}
+		content, _ := ioutil.ReadAll(contentFile)
+		vault.AddItem(title, itemType, string(content))
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", mode)
+		os.Exit(1)
 	}
 }

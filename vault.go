@@ -112,6 +112,10 @@ func (vault *Vault) Unlock(pwd string) error {
 	return nil
 }
 
+func (vault *Vault) AddItem(title string, itemType string, content string) error {
+	return nil
+}
+
 func (vault *Vault) ListItems() ([]Item, error) {
 	items := []Item{}
 	dirEntries, err := ioutil.ReadDir(vault.Path)

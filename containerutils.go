@@ -5,6 +5,8 @@ import (
 	"sort"
 )
 
+// FIXME - This is not very idiomatic use of Go.
+
 func sliceTypeCheck(slice interface{}, value interface{}) {
 	sliceVal := reflect.ValueOf(slice)
 	if sliceVal.Kind() != reflect.Array &&
