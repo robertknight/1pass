@@ -118,9 +118,6 @@ func main() {
 	// unlock vault
 	fmt.Printf("Using keychain in %s\n", keyChainDir)
 	fmt.Printf("Master password: ")
-	//stdinReader := bufio.NewScanner(os.Stdin)
-	//stdinReader.Scan()
-	//masterPwd := stdinReader.Text()
 	masterPwd, err := terminal.ReadPassword(0)
 	if err != nil {
 		os.Exit(1)

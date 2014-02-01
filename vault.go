@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
+	"crypto/rand"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
@@ -16,6 +17,7 @@ import (
 )
 
 const Aes128KeyLen = 16
+const AesBlockLen = 16
 
 type Vault struct {
 	Path string
@@ -113,6 +115,16 @@ func (vault *Vault) Unlock(pwd string) error {
 }
 
 func (vault *Vault) AddItem(title string, itemType string, content string) error {
+	// TODO:
+	// - Generate UUID for item
+	// - Encrypt item contents
+	// -- Generate salt
+	// -- Generate IV
+	// -- Encrypt data
+	// - Fill in item JSON struct
+	// - Write data to <UUID>.1password
+	// - Add entry in contents.js:
+	//   [UUID, type, title, URL, <last modified?>, <?>, <date?>, "N" <?>]
 	return nil
 }
 
@@ -144,12 +156,28 @@ func (item *Item) Decrypt() (string, error) {
 	if !ok {
 		return "", errors.New("No decryption key found for item")
 	}
-	key, iv := openSslKey(itemKey, item.Encrypted[8:16])
-	decryptedData, err := aesCbcDecrypt(key, item.Encrypted[16:], iv)
+	salt, cipherText := extractSaltAndCipherText(item.Encrypted)
+	key, iv := openSslKey(itemKey, salt)
+	decryptedData, err := aesCbcDecrypt(key, cipherText, iv)
 	if err != nil {
 		return "", fmt.Errorf("Failed to decrypt item: %v", err)
 	}
 	return string(decryptedData), nil
+}
+
+func (item *Item) SetContent(content string) error {
+	itemKey, ok := item.vault.keys[item.SecurityLevel]
+	if !ok {
+		return errors.New("No encryption key found for item")
+	}
+	salt := randomBytes(8)
+	key, iv := openSslKey(itemKey, salt)
+	encryptedData, err := aesCbcEncrypt(key, []byte(content), iv)
+	if err != nil {
+		return fmt.Errorf("Failed to encrypt item: %v", err)
+	}
+	item.Encrypted = []byte(fmt.Sprintf("%s%s%s", "Salted__", salt, encryptedData))
+	return nil
 }
 
 func (item *Item) Type() string {
@@ -185,16 +213,52 @@ func aesCbcDecrypt(key []byte, cipherText []byte, iv []byte) ([]byte, error) {
 	return plainText, nil
 }
 
+func aesCbcEncrypt(key []byte, plainText []byte, iv []byte) ([]byte, error) {
+	if len(key) != Aes128KeyLen {
+		return nil, fmt.Errorf("Incorrect key length")
+	}
+	if len(iv) != Aes128KeyLen {
+		return nil, fmt.Errorf("Incorrect IV length")
+	}
+
+	plainText = aesAddPadding(plainText)
+	aesCipher, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to initialize AES cipher")
+	}
+	cbcEncrypter := cipher.NewCBCEncrypter(aesCipher, iv)
+	cipherText := make([]byte, len(plainText))
+	cbcEncrypter.CryptBlocks(cipherText, plainText)
+
+	return cipherText, nil
+}
+
 func aesStripPadding(data []byte) ([]byte, error) {
-	const blockLen = 16
-	if len(data)%blockLen != 0 {
-		return nil, fmt.Errorf("Decrypted data block length is not a multiple of %d", blockLen)
+	if len(data)%AesBlockLen != 0 {
+		return nil, fmt.Errorf("Decrypted data block length is not a multiple of %d", AesBlockLen)
 	}
 	paddingLen := int(data[len(data)-1])
 	if paddingLen > 16 {
 		return nil, fmt.Errorf("Invalid last block padding length: %d", paddingLen)
 	}
 	return data[:len(data)-paddingLen], nil
+}
+
+func aesAddPadding(data []byte) []byte {
+	paddingLen := AesBlockLen - len(data)%AesBlockLen
+	for i := 0; i < paddingLen; i++ {
+		data = append(data, byte(paddingLen))
+	}
+	return data
+}
+
+func randomBytes(count int) []byte {
+	data := make([]byte, count)
+	_, err := rand.Read(data)
+	if err != nil {
+		panic("Failed to read bytes")
+	}
+	return data
 }
 
 func extractSaltAndCipherText(data []byte) ([]byte, []byte) {
