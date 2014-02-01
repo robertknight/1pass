@@ -31,15 +31,15 @@ type Vault struct {
 
 // struct for items in .1password files
 type Item struct {
-	UpdatedAt     uint64
-	Title         string
-	SecurityLevel string
-	Encrypted     []byte
-	ContentsHash  string
-	TypeName      string
-	Uuid          string
-	CreatedAt     uint64
-	Location      string
+	UpdatedAt     uint64 `json:"updatedAt"`
+	Title         string `json:"title"`
+	SecurityLevel string `json:"securityLevel"`
+	Encrypted     []byte `json:"encrypted"`
+	ContentsHash  string `json:"contentsHash"`
+	TypeName      string `json:"typeName"`
+	Uuid          string `json:"uuid"`
+	CreatedAt     uint64 `json:"createdAt"`
+	Location      string `json:"location"`
 
 	vault *Vault
 }
