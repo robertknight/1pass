@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/json"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -14,6 +15,7 @@ import (
 	"path"
 
 	"code.google.com/p/go.crypto/pbkdf2"
+	"github.com/nu7hatch/gouuid"
 )
 
 const Aes128KeyLen = 16
@@ -37,6 +39,7 @@ type Item struct {
 	TypeName      string
 	Uuid          string
 	CreatedAt     uint64
+	Location      string
 
 	vault *Vault
 }
@@ -114,18 +117,104 @@ func (vault *Vault) Unlock(pwd string) error {
 	return nil
 }
 
-func (vault *Vault) AddItem(title string, itemType string, content string) error {
-	// TODO:
-	// - Generate UUID for item
-	// - Encrypt item contents
-	// -- Generate salt
-	// -- Generate IV
-	// -- Encrypt data
-	// - Fill in item JSON struct
-	// - Write data to <UUID>.1password
-	// - Add entry in contents.js:
-	//   [UUID, type, title, URL, <last modified?>, <?>, <date?>, "N" <?>]
+func (vault *Vault) AddItem(title string, itemType string, content string) (Item, error) {
+	itemId, err := uuid.NewV4()
+	if err != nil {
+		return Item{}, err
+	}
+	item := Item {
+		Title : title,
+		SecurityLevel : "SL5",
+		Encrypted : []byte{},
+		TypeName : itemType,
+		Uuid : hex.EncodeToString(itemId[:]),
+		vault : vault,
+	}
+	err = item.SetContent(content)
+	if err != nil {
+		return Item{}, err
+	}
+
+	err = item.Save()
+	if err != nil {
+		return Item{}, err
+	}
+
+	return item, nil
+}
+
+func (item *Item) contentsEntry() []interface{} {
+	entry := []interface{} {
+		item.Uuid,
+		item.TypeName,
+		item.Title,
+		item.Location,
+		item.UpdatedAt,
+		"", // TODO - Check what this is
+		0, // TODO - Check what this is
+		"N", // TODO - Check what this is
+	}
+	return entry
+}
+
+func readContentsEntry(entry []interface{}) Item {
+	if len(entry) < 8 {
+		return Item{}
+	}
+	// TODO - Typecheck this
+	return Item{
+		Uuid : entry[0].(string),
+		TypeName : entry[1].(string),
+		Title : entry[2].(string),
+		Location : entry[3].(string),
+		UpdatedAt : uint64(entry[4].(float64)),
+	}
+}
+
+func (item *Item) Save() error {
+	// save item to .1password file
+	itemPath := item.vault.Path + "/" + item.Uuid + ".1password"
+	err := writeJsonFile(itemPath, item)
+	if err != nil {
+		return fmt.Errorf("Failed to save item %s: %v", item.Title, err)
+	}
+
+	// update contents.js entry
+	contentsFilePath := item.vault.Path+"/contents.js"
+	var contentsEntries [][]interface{}
+	err = readJsonFile(contentsFilePath, &contentsEntries)
+	if err != nil {
+		return fmt.Errorf("Failed to read contents.js: %v", err)
+	}
+	foundExisting := false
+	for i, entry := range contentsEntries {
+		tmpItem := readContentsEntry(entry)
+		if tmpItem.Uuid == item.Uuid {
+			contentsEntries[i] = item.contentsEntry()
+			foundExisting = true
+			break
+		}
+	}
+	if !foundExisting {
+		contentsEntries = append(contentsEntries, item.contentsEntry())
+	}
+	err = writeJsonFile(contentsFilePath, contentsEntries)
+	if err != nil {
+		return fmt.Errorf("Failed to update contents.js: %v", err)
+	}
+
 	return nil
+}
+
+func (vault *Vault) LoadItem(uuid string) (Item, error) {
+	item := Item{
+		vault : vault,
+	}
+	err := readJsonFile(vault.Path+"/"+uuid+".1password", &item)
+	if err != nil {
+		return Item{}, err
+	}
+	return item, nil
 }
 
 func (vault *Vault) ListItems() ([]Item, error) {
@@ -166,6 +255,12 @@ func (item *Item) Decrypt() (string, error) {
 }
 
 func (item *Item) SetContent(content string) error {
+	var unused interface{}
+	err := json.Unmarshal([]byte(content), &unused)
+	if err != nil {
+		return fmt.Errorf("Content is not valid JSON: %v", err)
+	}
+
 	itemKey, ok := item.vault.keys[item.SecurityLevel]
 	if !ok {
 		return errors.New("No encryption key found for item")
@@ -305,6 +400,18 @@ func readJsonFile(path string, out interface{}) error {
 		return err
 	}
 	err = json.Unmarshal(content, out)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func writeJsonFile(path string, in interface{}) error {
+	json, err := json.Marshal(in)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(path, json, 0644)
 	if err != nil {
 		return err
 	}
