@@ -347,13 +347,11 @@ func main() {
 		}
 
 	case "set-password":
-		// FIXME: This updates the encryptionKeys.js file and the new password
-		// is used locally by this client and 1PasswordAnywhere.
+		// FIXME: This only updates encryptionKeys.js. It also needs to update
+		// 1Password.keys, (.1password.keys as well?) and the .password.hint
+		// file
 		//
-		// However 1Password for iOS still expects the old password.
-		// We may also need to:
-		// - Update the 1Password.keys file (what about .1password.keys as well?)
-		// - Update the .password.hint file
+		// 1Password for iOS uses the 1Password.keys file
 		fmt.Printf("New master password: ")
 		newPwd, err := terminal.ReadPassword(0)
 		fmt.Printf("\nRe-enter new master password: ")
