@@ -26,8 +26,8 @@ tries to find a directory called `1Password.agilekeychain` using `locate`.
 
 **show-json** _pattern_ - Show the raw decrypted contents of items matching _pattern_
  
-**add** _title_ _type_ _content_ - Add a new item to the vault with the given title, type and content
- 
+**add** _type_ _title_ - Add a new item to the vault with the given type and title.
+
 **remove** _pattern_ - Remove items from the vault matching _pattern_
  
 **copy** _pattern_ _field_ - Copy the value of the given _field_ from the item matching _pattern_ to the clipboard
