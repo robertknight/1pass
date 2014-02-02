@@ -118,6 +118,35 @@ func readConfirmation() bool {
 	return err == nil && count > 0 && strings.ToLower(response) == "y"
 }
 
+func checkErr(err error, context string) {
+	if err != nil {
+		var format string
+		if context != "" {
+			format = "%s: "
+		}
+		format = format + "%v\n"
+		fmt.Fprintf(os.Stderr, "%s: %v\n", context, err)
+		os.Exit(1)
+	}
+}
+
+func createNewVault(path string) {
+	fmt.Printf("Creating new vault in %s\n", path)
+	fmt.Printf("Enter master password: ")
+	masterPwd, err := terminal.ReadPassword(0)
+	fmt.Printf("\nRe-enter master password: ")
+	masterPwd2, _ := terminal.ReadPassword(0)
+	if !bytes.Equal(masterPwd, masterPwd2) {
+		fmt.Fprintf(os.Stderr, "Passwords do not match")
+		os.Exit(1)
+	}
+
+	_, err = NewVault(path, string(masterPwd))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create new vault: %v", err)
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -134,6 +163,15 @@ func main() {
 	}
 
 	mode := flag.Args()[0]
+
+	// create a new vault if the mode is 'new'
+	if mode == "new" {
+		posArgs, err := positionalArgs(flag.Args()[1:], []string{"path"})
+		checkErr(err, "")
+		path := posArgs[0]
+		createNewVault(path)
+		return
+	}
 
 	// unlock vault
 	fmt.Printf("Using keychain in %s\n", keyChainDir)
@@ -154,18 +192,6 @@ func main() {
 	if err != nil {
 		fmt.Printf("Unable to unlock vault: %v\n", err)
 		os.Exit(1)
-	}
-
-	checkErr := func(err error, context string) {
-		if err != nil {
-			var format string
-			if context != "" {
-				format = "%s: "
-			}
-			format = format + "%v\n"
-			fmt.Fprintf(os.Stderr, "%s: %v\n", context, err)
-			os.Exit(1)
-		}
 	}
 
 	switch mode {
@@ -219,7 +245,7 @@ func main() {
 			}
 		}
 	case "copy":
-		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern","field"})
+		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern", "field"})
 		checkErr(err, "")
 		pattern := posArgs[0]
 		field := posArgs[1]

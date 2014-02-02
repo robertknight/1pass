@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"testing"
 
 	uuid "github.com/nu7hatch/gouuid"
@@ -15,7 +16,7 @@ func newTestItem(vault *Vault) Item {
 		Title:         "Test Item",
 		SecurityLevel: "SL5",
 		Encrypted:     []byte{},
-		TypeName:      "TestItem",
+		TypeName:      "securenotes.SecureNote",
 		Uuid:          hex.EncodeToString(itemId[:]),
 		vault:         vault,
 	}
@@ -129,5 +130,49 @@ func TestEncryptDecryptKey(t *testing.T) {
 
 	if !bytes.Equal(randomKey, decryptedKey) {
 		t.Errorf("Decrypted key does not match original input")
+	}
+}
+
+func TestNewVault(t *testing.T) {
+	vaultDir := "/tmp/test-new-vault"
+	err := os.RemoveAll(vaultDir)
+	if err != nil {
+		t.Error(err)
+	}
+
+	pwd := "the-master-pwd"
+	vault, err := NewVault(vaultDir, pwd)
+	if err != nil {
+		t.Error(err)
+	}
+	err = vault.Unlock(pwd)
+	if err != nil {
+		t.Errorf("Error unlocking new vault: %v", err)
+	}
+
+	content := NoteItemContent{
+		Text: "test-secure-note",
+	}
+
+	item := newTestItem(&vault)
+	item.SetContent(content)
+
+	err = item.Save()
+	if err != nil {
+		t.Errorf("Unable to save item in new vault: %v", err)
+	}
+
+	loadedItem, err := item.vault.LoadItem(item.Uuid)
+	if err != nil {
+		t.Errorf("failed to load saved item: %v", err)
+	}
+	loadedContent, err := loadedItem.Content()
+	if err != nil {
+		t.Errorf("failed to decrypt loaded item: %v", err)
+	}
+	loadedText := loadedContent.(*NoteItemContent).Text
+
+	if loadedText != content.Text {
+		t.Errorf("Loaded/saved item content mismatch: %v vs %v", loadedText, content.Text)
 	}
 }

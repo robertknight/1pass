@@ -79,27 +79,30 @@ type Item struct {
 type encKeyEntry struct {
 	// random 1024-byte encryption key, encrypted with
 	// a key derived from the master password using PBKDF2
-	Data []byte
+	Data []byte `json:"data"`
 
 	// randomly generated UUID identifying the key
-	Identifier string
+	Identifier string `json:"identifier"`
 
 	// number of iterations of PBKDF2 to apply to
 	// the master password to obtain the derived key
 	// used to decrypt individual decryption keys
-	Iterations int
+	Iterations int `json:"iterations"`
 
 	// security level of key. Referenced by 'securityLevel' field
 	// in individual items
-	Level string
+	Level string `json:"level"`
 
 	// copy of decryption key encrypted with itself
-	Validation []byte
+	Validation []byte `json:"validation"`
 }
 
 // struct for encryptionKeys.js
 type encryptionKeys struct {
-	List []encKeyEntry
+	List []encKeyEntry `json:"list"`
+
+	// ID of the 'security level 5' key
+	SL5 string
 }
 
 func CheckVault(vaultPath string) error {
@@ -119,6 +122,59 @@ func CheckVault(vaultPath string) error {
 	}
 
 	return nil
+}
+
+func NewVault(vaultPath string, masterPwd string) (Vault, error) {
+	_, err := os.Stat(vaultPath)
+	if !os.IsNotExist(err) {
+		return Vault{}, fmt.Errorf("Vault %s already exists", vaultPath)
+	}
+
+	dataDir := vaultPath + "/data/default"
+	err = os.MkdirAll(dataDir, os.ModeDir|0755)
+	if err != nil {
+		return Vault{}, err
+	}
+
+	// create empty contents.js file
+	err = writeJsonFile(dataDir+"/contents.js", []string{})
+	if err != nil {
+		return Vault{}, fmt.Errorf("Failed to create contents.js file")
+	}
+
+	// create encryptionKeys.js file
+	const pbkdfIterations = 1000
+	randomKey := randomBytes(1024)
+	salt := randomBytes(8)
+	encryptedKey, validation, err := encryptKey([]byte(masterPwd), randomKey, salt, pbkdfIterations)
+	if err != nil {
+		return Vault{}, fmt.Errorf("Failed to generate encryption key")
+	}
+
+	mainKeyId, err := uuid.NewV4()
+	if err != nil {
+		return Vault{}, fmt.Errorf("Failed to generate encryption key ID: %v", err)
+	}
+
+	mainKey := encKeyEntry{
+		Data:       []byte(fmt.Sprintf("Salted__%s%s", salt, encryptedKey)),
+		Identifier: hex.EncodeToString(mainKeyId[:]),
+		Iterations: pbkdfIterations,
+		Level:      "SL5",
+		Validation: validation,
+	}
+	err = writeJsonFile(dataDir+"/encryptionKeys.js", encryptionKeys{
+		List: []encKeyEntry{mainKey},
+		SL5:  mainKey.Identifier,
+	})
+	if err != nil {
+		return Vault{}, fmt.Errorf("Failed to save encryption key")
+	}
+
+	return Vault{
+		Path: dataDir,
+		keys: map[string][]byte{},
+	}, nil
 }
 
 func OpenVault(vaultPath string) (Vault, error) {
@@ -148,9 +204,48 @@ func (vault *Vault) Unlock(pwd string) error {
 		salt, encryptedKey := extractSaltAndCipherText(entry.Data)
 		decryptedKey, err := decryptKey([]byte(pwd), encryptedKey, salt, entry.Iterations, entry.Validation)
 		if err != nil {
-			return fmt.Errorf("Failed to decrypt derived key: %v", err)
+			return fmt.Errorf("Failed to decrypt main key: %v", err)
 		}
 		vault.keys[entry.Level] = decryptedKey
+	}
+
+	return nil
+}
+
+func (vault *Vault) SetMasterPassword(currentPwd string, newPwd string) error {
+	var keyList encryptionKeys
+	keyFilePath := vault.Path + "/encryptionKeys.js"
+	err := readJsonFile(keyFilePath, &keyList)
+	if err != nil {
+		return errors.New("Failed to read encryption key file")
+	}
+
+	for i, entry := range keyList.List {
+		if len(entry.Data) != 1056 {
+			return fmt.Errorf("Unexpected encrypted key length: %d", len(entry.Data))
+		}
+		salt, encryptedKey := extractSaltAndCipherText(entry.Data)
+		decryptedKey, err := decryptKey([]byte(currentPwd), encryptedKey, salt, entry.Iterations, entry.Validation)
+		if err != nil {
+			return fmt.Errorf("Failed to decrypt main key: %v", err)
+		}
+
+		// re-encrypt key with new password
+		newSalt := randomBytes(8)
+		newEncryptedKey, newValidation, err := encryptKey([]byte(newPwd), decryptedKey, newSalt, entry.Iterations)
+		if err != nil {
+			return fmt.Errorf("Failed to re-encrypt main key: %v", err)
+		}
+
+		entry.Data = []byte(fmt.Sprintf("Salted__%s%s", newSalt, newEncryptedKey))
+		entry.Validation = newValidation
+		keyList.List[i] = entry
+	}
+
+	// write updated encryptionKeys.js file
+	err = writeJsonFile(keyFilePath, keyList)
+	if err != nil {
+		return fmt.Errorf("Failed to update encryption key file: %v", err)
 	}
 
 	return nil
@@ -255,6 +350,10 @@ func (item *Item) Path() string {
 }
 
 func (item *Item) Save() error {
+	if len(item.Encrypted) == 0 {
+		return fmt.Errorf("Item content not set")
+	}
+
 	// save item to .1password file
 	itemPath := item.Path()
 	err := writeJsonFile(itemPath, item)
@@ -390,6 +489,14 @@ func (item *Item) Content() (interface{}, error) {
 	}
 
 	return fieldValue, nil
+}
+
+func (item *Item) SetContent(data interface{}) error {
+	json, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	return item.SetContentJson(string(json))
 }
 
 func (item *Item) SetContentJson(content string) error {
