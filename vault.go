@@ -6,8 +6,8 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"crypto/sha1"
-	"encoding/json"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -15,7 +15,7 @@ import (
 	"path"
 
 	"code.google.com/p/go.crypto/pbkdf2"
-	"github.com/nu7hatch/gouuid"
+	uuid "github.com/nu7hatch/gouuid"
 )
 
 const Aes128KeyLen = 16
@@ -122,13 +122,13 @@ func (vault *Vault) AddItem(title string, itemType string, content string) (Item
 	if err != nil {
 		return Item{}, err
 	}
-	item := Item {
-		Title : title,
-		SecurityLevel : "SL5",
-		Encrypted : []byte{},
-		TypeName : itemType,
-		Uuid : hex.EncodeToString(itemId[:]),
-		vault : vault,
+	item := Item{
+		Title:         title,
+		SecurityLevel: "SL5",
+		Encrypted:     []byte{},
+		TypeName:      itemType,
+		Uuid:          hex.EncodeToString(itemId[:]),
+		vault:         vault,
 	}
 	err = item.SetContent(content)
 	if err != nil {
@@ -143,15 +143,54 @@ func (vault *Vault) AddItem(title string, itemType string, content string) (Item
 	return item, nil
 }
 
+func (item *Item) Remove() error {
+	itemDataFile := item.Path()
+
+	// remove contents.js entry
+	contentsFilePath := item.vault.Path + "/contents.js"
+	var contentsEntries [][]interface{}
+	err := readJsonFile(contentsFilePath, &contentsEntries)
+	if err != nil {
+		return fmt.Errorf("Failed to read contents.js: %v", err)
+	}
+
+	foundExisting := false
+	newContentsEntries := [][]interface{}{}
+	for _, entry := range contentsEntries {
+		tmpItem := readContentsEntry(entry)
+		if tmpItem.Uuid == item.Uuid {
+			foundExisting = true
+		} else {
+			newContentsEntries = append(newContentsEntries, entry)
+		}
+	}
+	if !foundExisting {
+		return fmt.Errorf("Entry '%s' (ID: %s) not found", item.Title, item.Uuid)
+	}
+
+	err = writeJsonFile(contentsFilePath, contentsEntries)
+	if err != nil {
+		return fmt.Errorf("Failed to update contents.js: %v", err)
+	}
+
+	// remove .1password data file
+	err = os.Remove(itemDataFile)
+	if err != nil {
+		return fmt.Errorf("Failed to remove item data file: %s: %v", itemDataFile, err)
+	}
+
+	return nil
+}
+
 func (item *Item) contentsEntry() []interface{} {
-	entry := []interface{} {
+	entry := []interface{}{
 		item.Uuid,
 		item.TypeName,
 		item.Title,
 		item.Location,
 		item.UpdatedAt,
-		"", // TODO - Check what this is
-		0, // TODO - Check what this is
+		"",  // TODO - Check what this is
+		0,   // TODO - Check what this is
 		"N", // TODO - Check what this is
 	}
 	return entry
@@ -163,24 +202,28 @@ func readContentsEntry(entry []interface{}) Item {
 	}
 	// TODO - Typecheck this
 	return Item{
-		Uuid : entry[0].(string),
-		TypeName : entry[1].(string),
-		Title : entry[2].(string),
-		Location : entry[3].(string),
-		UpdatedAt : uint64(entry[4].(float64)),
+		Uuid:      entry[0].(string),
+		TypeName:  entry[1].(string),
+		Title:     entry[2].(string),
+		Location:  entry[3].(string),
+		UpdatedAt: uint64(entry[4].(float64)),
 	}
+}
+
+func (item *Item) Path() string {
+	return item.vault.Path + "/" + item.Uuid + ".1password"
 }
 
 func (item *Item) Save() error {
 	// save item to .1password file
-	itemPath := item.vault.Path + "/" + item.Uuid + ".1password"
+	itemPath := item.Path()
 	err := writeJsonFile(itemPath, item)
 	if err != nil {
 		return fmt.Errorf("Failed to save item %s: %v", item.Title, err)
 	}
 
 	// update contents.js entry
-	contentsFilePath := item.vault.Path+"/contents.js"
+	contentsFilePath := item.vault.Path + "/contents.js"
 	var contentsEntries [][]interface{}
 	err = readJsonFile(contentsFilePath, &contentsEntries)
 	if err != nil {
@@ -208,7 +251,7 @@ func (item *Item) Save() error {
 
 func (vault *Vault) LoadItem(uuid string) (Item, error) {
 	item := Item{
-		vault : vault,
+		vault: vault,
 	}
 	err := readJsonFile(vault.Path+"/"+uuid+".1password", &item)
 	if err != nil {

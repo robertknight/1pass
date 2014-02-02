@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
-	"io/ioutil"
+
 	"code.google.com/p/go.crypto/ssh/terminal"
 )
 
@@ -98,6 +99,12 @@ func positionalArgs(args []string, names []string) ([]string, error) {
 	return args, nil
 }
 
+func readConfirmation() bool {
+	var response string
+	count, err := fmt.Scanln(&response)
+	return err == nil && count > 0 && strings.ToLower(response) == "y"
+}
+
 func main() {
 	flag.Parse()
 
@@ -136,30 +143,35 @@ func main() {
 		os.Exit(1)
 	}
 
+	checkErr := func(err error, context string) {
+		if err != nil {
+			var format string
+			if context != "" {
+				format = "%s: "
+			}
+			format = format + "%v\n"
+			fmt.Fprintf(os.Stderr, "%s: %v\n", context, err)
+			os.Exit(1)
+		}
+	}
+
 	switch mode {
 	case "list":
 		listItems(&vault)
 	case "show":
 		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern"})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			os.Exit(1)
-		}
+		checkErr(err, "")
+
 		pattern := posArgs[0]
 		items, err := lookupItems(&vault, pattern)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to lookup items: %v\n", err)
-			os.Exit(1)
-		}
+		checkErr(err, "Unable to lookup items")
+
 		for _, item := range items {
 			displayItem(item)
 		}
 	case "add":
 		posArgs, err := positionalArgs(flag.Args()[1:], []string{"title", "type", "content"})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			os.Exit(1)
-		}
+		checkErr(err, "")
 
 		title := posArgs[0]
 		itemType := posArgs[1]
@@ -171,6 +183,23 @@ func main() {
 		}
 		content, _ := ioutil.ReadAll(contentFile)
 		vault.AddItem(title, itemType, string(content))
+	case "remove":
+		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern"})
+		checkErr(err, "")
+		pattern := posArgs[0]
+		items, err := lookupItems(&vault, pattern)
+		checkErr(err, "Unable to lookup items to remove")
+
+		for _, item := range items {
+			fmt.Printf("Remove '%s' from vault? Y/N\n", item.Title)
+			if readConfirmation() {
+				err = item.Remove()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Unable to remove item: %s\n", err)
+				}
+			}
+		}
+
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", mode)
 		os.Exit(1)
