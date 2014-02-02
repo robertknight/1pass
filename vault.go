@@ -36,26 +36,50 @@ type Vault struct {
 	keys map[string][]byte
 }
 
-// struct for items in .1password files
+// struct for items in <UUID>.1password files
 type Item struct {
+	// UNIX timestamp specifying last modification
+	// time for item
 	UpdatedAt     uint64 `json:"updatedAt"`
 	Title         string `json:"title"`
+
+	// identifies the encryption key from the encryptionKeys.js
+	// file used to encrypt the item
 	SecurityLevel string `json:"securityLevel"`
+
+	// JSON content of the item, encrypted with the key identified
+	// by 'SecurityLevel' from encryptionKeys.js
 	Encrypted     []byte `json:"encrypted"`
 	ContentsHash  string `json:"contentsHash"`
+
+	// type code identifying the type of item, eg. 'webforms.WebForm'
+	// for a web form
 	TypeName      string `json:"typeName"`
+
+	// randomly generated UUID for the item
 	Uuid          string `json:"uuid"`
+
+	// UNIX timestamp containing the creation time of the item
 	CreatedAt     uint64 `json:"createdAt"`
+
+	// primary domain or URL associated with the item?
 	Location      string `json:"location"`
 
 	vault *Vault
 }
 
+// holds details of the values to fill an <input> element
+// on a web form with
 type WebFormField struct {
 	Value string
 	Id string
 	Name string
+
+	// single char code identifying the type of <input> element
 	Type string
+
+	// category for the meaning of the value, eg. 'username',
+	// 'password'
 	Designation string
 }
 
@@ -64,6 +88,7 @@ type WebFormUrl struct {
 	Url string
 }
 
+// struct for contents of items with the 'webforms.WebForm' type
 type WebFormContent struct {
 	Fields []WebFormField
 	Urls []WebFormUrl
@@ -73,10 +98,23 @@ type WebFormContent struct {
 
 // struct for items in encryptionKeys.js
 type encKeyEntry struct {
+	// random 1024-byte encryption key, encrypted with
+	// a key derived from the master password using PBKDF2
 	Data       []byte
+
+	// randomly generated UUID identifying the key 
 	Identifier string
+
+	// number of iterations of PBKDF2 to apply to
+	// the master password to obtain the derived key
+	// used to decrypt individual decryption keys
 	Iterations int
+
+	// security level of key. Referenced by 'securityLevel' field
+	// in individual items
 	Level      string
+
+	// copy of decryption key encrypted with itself
 	Validation []byte
 }
 
@@ -427,6 +465,11 @@ func aesCbcEncrypt(key []byte, plainText []byte, iv []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
+// functions for adding and stripping padding from plaintext to
+// make the length a multiple of the AES block size.
+//
+// In the padding scheme the last <padding length> bytes
+// have a value equal to the padding length, always in (1,16]
 func aesStripPadding(data []byte) ([]byte, error) {
 	if len(data)%AesBlockLen != 0 {
 		return nil, fmt.Errorf("Decrypted data block length is not a multiple of %d", AesBlockLen)
@@ -517,6 +560,12 @@ func writeJsonFile(path string, in interface{}) error {
 	return nil
 }
 
+// derive an AES-128 key and initialization vector from an arbitrary-length
+// password and salt using MD5.
+//
+// Key := MD5(concat(password, salt))
+// IV := MD5(concat(Key,concat(password,salt)))
+//
 func openSslKey(password []byte, salt []byte) (key []byte, iv []byte) {
 	const rounds = 2
 	data := append(password, salt...)
