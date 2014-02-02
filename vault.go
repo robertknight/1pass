@@ -124,6 +124,10 @@ func CheckVault(vaultPath string) error {
 	return nil
 }
 
+// Creates a new vault in 'vaultPath' and a random master key, encrypted
+// with 'masterPwd'
+//
+// The returned vault is initially locked
 func NewVault(vaultPath string, masterPwd string) (Vault, error) {
 	_, err := os.Stat(vaultPath)
 	if !os.IsNotExist(err) {
@@ -177,6 +181,8 @@ func NewVault(vaultPath string, masterPwd string) (Vault, error) {
 	}, nil
 }
 
+// Returns the vault in 'vaultPath'. The vault is initially
+// locked and must be unlocked with Unlock()
 func OpenVault(vaultPath string) (Vault, error) {
 	err := CheckVault(vaultPath)
 	if err != nil {
@@ -189,6 +195,9 @@ func OpenVault(vaultPath string) (Vault, error) {
 	}, nil
 }
 
+// Decrypts the master encryption key for the vault using
+// the given master password. Item contents can then be decrypted
+// and items can be added or updated
 func (vault *Vault) Unlock(pwd string) error {
 	var keyList encryptionKeys
 	err := readJsonFile(vault.Path+"/encryptionKeys.js", &keyList)
@@ -212,6 +221,9 @@ func (vault *Vault) Unlock(pwd string) error {
 	return nil
 }
 
+// Changes the master password for the vault. The main encryption key
+// is first decrypted using the current password, then re-encrypted
+// using the new password
 func (vault *Vault) SetMasterPassword(currentPwd string, newPwd string) error {
 	var keyList encryptionKeys
 	keyFilePath := vault.Path + "/encryptionKeys.js"

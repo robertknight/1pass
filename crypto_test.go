@@ -11,7 +11,7 @@ func TestPadding(t *testing.T) {
 	for i := 1; i < len(alphabet); i++ {
 		input := []byte(alphabet[:i])
 		padded := aesAddPadding(input)
-		if len(padded) % AesBlockLen != 0 {
+		if len(padded)%AesBlockLen != 0 {
 			t.Errorf("incorrect padding len: %d\n", len(padded))
 		}
 		stripped, err := aesStripPadding(padded)
@@ -41,4 +41,3 @@ func TestCrypt(t *testing.T) {
 		t.Errorf("input: %s, decrypted: %s", plainText, decrypted)
 	}
 }
-

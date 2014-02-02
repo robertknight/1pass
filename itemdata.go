@@ -15,7 +15,7 @@ type ItemType struct {
 // field in a webforms.WebForm entry
 type ItemField struct {
 	Value string `json:"value"`
-	Id string `json:"id"`
+	Id    string `json:"id"`
 
 	// name of the field. For web forms this is the 'name'
 	// attribute of the associated <input> element
@@ -32,26 +32,26 @@ type ItemField struct {
 
 type ItemUrl struct {
 	Label string `json:"label"`
-	Url string `json:"url"`
+	Url   string `json:"url"`
 }
 
 // webforms.WebForm
 type WebFormItemContent struct {
-	Fields []ItemField `json:"fields"`
-	Urls []ItemUrl `json:"URLs"`
-	HtmlMethod string `json:"htmlMethod"`
-	HtmlAction string `json:"htmlAction"`
+	Fields     []ItemField `json:"fields"`
+	Urls       []ItemUrl   `json:"URLs"`
+	HtmlMethod string      `json:"htmlMethod"`
+	HtmlAction string      `json:"htmlAction"`
 }
 
 // wallet.financial.CreditCard
 type CreditCardItemContent struct {
 	// card type, eg. 'visa'
-	Type string `json:"type"`
-	ExpiryMonth int `json:"expiry_mm"`
-	ExpiryYear int `json:"expiry_yy"`
-	Cvv int `json:"cvv"`
-	Ccnum string `json:"ccnum"`
-	CardHolder string `json:"cardholder"`
+	Type        string `json:"type"`
+	ExpiryMonth int    `json:"expiry_mm"`
+	ExpiryYear  int    `json:"expiry_yy"`
+	Cvv         int    `json:"cvv"`
+	Ccnum       string `json:"ccnum"`
+	CardHolder  string `json:"cardholder"`
 
 	// Sections: <fields>
 }
@@ -73,14 +73,14 @@ type NoteItemContent struct {
 
 // passwords.Password
 type PasswordItemContent struct {
-	Notes string `json:"notesPlain"`
-	Urls []ItemUrl `json:"URLs"`
+	Notes string    `json:"notesPlain"`
+	Urls  []ItemUrl `json:"URLs"`
 }
 
 // wallet.onlineservices.Email.v2
 type EmailItemContent struct {
 	Username string `json:"pop_username"`
-	Server string `json:"pop_server"`
+	Server   string `json:"pop_server"`
 	Password string `json:"pop_password"`
 
 	// supported fetch protocol - eg. POP, IMAP
@@ -89,41 +89,41 @@ type EmailItemContent struct {
 
 // map of type code -> ItemType for
 // standard item types
-var ItemTypes = map[string]ItemType {
-	"webforms.WebForm" : ItemType{
-		name : "Login",
-		contentType : reflect.TypeOf(WebFormItemContent{}),
-		shortAlias : "login",
+var ItemTypes = map[string]ItemType{
+	"webforms.WebForm": ItemType{
+		name:        "Login",
+		contentType: reflect.TypeOf(WebFormItemContent{}),
+		shortAlias:  "login",
 	},
-	"wallet.financial.CreditCard" : ItemType{
-		name : "Credit Card",
-		contentType : reflect.TypeOf(CreditCardItemContent{}),
-		shortAlias : "card",
+	"wallet.financial.CreditCard": ItemType{
+		name:        "Credit Card",
+		contentType: reflect.TypeOf(CreditCardItemContent{}),
+		shortAlias:  "card",
 	},
-	"wallet.computer.Router" : ItemType{
-		name : "Wireless Router",
-		contentType : reflect.TypeOf(RouterItemContent{}),
-		shortAlias : "router",
+	"wallet.computer.Router": ItemType{
+		name:        "Wireless Router",
+		contentType: reflect.TypeOf(RouterItemContent{}),
+		shortAlias:  "router",
 	},
-	"securenotes.SecureNote" : ItemType{
-		name : "Secure Note",
-		contentType : reflect.TypeOf(NoteItemContent{}),
-		shortAlias : "note",
+	"securenotes.SecureNote": ItemType{
+		name:        "Secure Note",
+		contentType: reflect.TypeOf(NoteItemContent{}),
+		shortAlias:  "note",
 	},
-	"passwords.Password" : ItemType{
-		name : "Password",
-		contentType : reflect.TypeOf(PasswordItemContent{}),
-		shortAlias : "pass",
+	"passwords.Password": ItemType{
+		name:        "Password",
+		contentType: reflect.TypeOf(PasswordItemContent{}),
+		shortAlias:  "pass",
 	},
-	"wallet.onlineservices.Email.v2" : ItemType{
-		name : "Email Account",
-		contentType : reflect.TypeOf(EmailItemContent{}),
-		shortAlias : "email",
+	"wallet.onlineservices.Email.v2": ItemType{
+		name:        "Email Account",
+		contentType: reflect.TypeOf(EmailItemContent{}),
+		shortAlias:  "email",
 	},
 }
 
 // other item types TODO:
-// 
+//
 // - Bank Account
 // - Database
 // - Driver's License
@@ -135,5 +135,3 @@ var ItemTypes = map[string]ItemType {
 // - Server
 // - Social Security Number
 // - Software License
-
-
