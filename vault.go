@@ -251,7 +251,7 @@ func (vault *Vault) SetMasterPassword(currentPwd string, newPwd string) error {
 	return nil
 }
 
-func (vault *Vault) AddItem(title string, itemType string, content string) (Item, error) {
+func (vault *Vault) AddItem(title string, itemType string, content interface{}) (Item, error) {
 	itemId, err := uuid.NewV4()
 	if err != nil {
 		return Item{}, err
@@ -264,7 +264,7 @@ func (vault *Vault) AddItem(title string, itemType string, content string) (Item
 		Uuid:          hex.EncodeToString(itemId[:]),
 		vault:         vault,
 	}
-	err = item.SetContentJson(content)
+	err = item.SetContent(content)
 	if err != nil {
 		return Item{}, err
 	}
@@ -302,7 +302,7 @@ func (item *Item) Remove() error {
 		return fmt.Errorf("Entry '%s' (ID: %s) not found", item.Title, item.Uuid)
 	}
 
-	err = writeJsonFile(contentsFilePath, contentsEntries)
+	err = writeJsonFile(contentsFilePath, newContentsEntries)
 	if err != nil {
 		return fmt.Errorf("Failed to update contents.js: %v", err)
 	}

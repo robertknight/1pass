@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
 
 	"code.google.com/p/go.crypto/ssh/terminal"
@@ -88,7 +89,70 @@ func displayItemJson(item Item) {
 		return
 	}
 	fmt.Println(string(prettyJson([]byte(decrypted))))
+}
 
+func readFields(names []string, args ...*string) error {
+	if len(names) != len(args) {
+		return fmt.Errorf("name/arg count mismatch")
+	}
+	for i, name := range names {
+		fmt.Printf("%s: ", name)
+		var value string
+		if strings.ToLower(name) == "password" {
+			passBytes, _ := terminal.ReadPassword(0)
+			value = string(passBytes)
+			fmt.Println()
+		} else {
+			scanner := bufio.NewScanner(os.Stdin)
+			scanner.Scan()
+			value = scanner.Text()
+		}
+		*args[i] = value
+	}
+	return nil
+}
+
+func addItem(vault *Vault, title string, shortTypeName string) error {
+	var content interface{}
+	var typeName string
+	for typeKey, itemType := range ItemTypes {
+		if itemType.shortAlias == shortTypeName {
+			content = reflect.New(itemType.contentType).Interface()
+			typeName = typeKey
+		}
+	}
+	if len(typeName) == 0 {
+		return fmt.Errorf("Unknown item type '%s'", shortTypeName)
+	}
+
+	var location string
+	switch itemContent := content.(type) {
+	case *WebFormItemContent:
+		var username string
+		var pass string
+		var domain string
+		err := readFields([]string{"Username", "Password", "Domain"}, &username, &pass, &domain)
+		if err != nil {
+			return err
+		}
+		itemContent.Fields = []ItemField{
+			ItemField{Name: "username", Value: username, Type: "T", Designation: "username"},
+			ItemField{Name: "password", Value: pass, Type: "P", Designation: "password"},
+		}
+		itemContent.Urls = []ItemUrl{
+			ItemUrl{Label: "website", Url: domain},
+		}
+		location = domain
+	default:
+		fmt.Fprintf(os.Stderr, "Entering item details for this type is not supported")
+	}
+	item, err := vault.AddItem(title, typeName, content)
+	item.Location = location
+	err = item.Save()
+	if err != nil {
+		return err
+	}
+	return err
 }
 
 func lookupItems(vault *Vault, pattern string) ([]Item, error) {
@@ -167,6 +231,10 @@ func main() {
 	// create a new vault if the mode is 'new'
 	if mode == "new" {
 		posArgs, err := positionalArgs(flag.Args()[1:], []string{"path"})
+		if err != nil {
+			posArgs = []string{os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain"}
+		}
+		fmt.Printf("Creating new vault in '%s'\n", posArgs[0])
 		checkErr(err, "")
 		path := posArgs[0]
 		createNewVault(path)
@@ -215,19 +283,16 @@ func main() {
 			}
 		}
 	case "add":
-		posArgs, err := positionalArgs(flag.Args()[1:], []string{"title", "type", "content"})
+		posArgs, err := positionalArgs(flag.Args()[1:], []string{"type", "title"})
 		checkErr(err, "")
 
-		title := posArgs[0]
-		itemType := posArgs[1]
-		contentPath := posArgs[2]
-		contentFile, err := os.Open(contentPath)
+		itemType := posArgs[0]
+		title := posArgs[1]
+		err = addItem(&vault, title, itemType)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to read %s: %v\n", contentPath, err)
+			fmt.Fprintf(os.Stderr, "Failed to add item: %v\n", err)
 			os.Exit(1)
 		}
-		content, _ := ioutil.ReadAll(contentFile)
-		vault.AddItem(title, itemType, string(content))
 	case "remove":
 		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern"})
 		checkErr(err, "")

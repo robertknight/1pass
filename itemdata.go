@@ -8,6 +8,8 @@ type ItemType struct {
 	// type of struct used to hold data for
 	// this type of item
 	contentType reflect.Type
+	// a short alias for this item type
+	shortAlias string
 }
 
 // field in a webforms.WebForm entry
@@ -91,26 +93,32 @@ var ItemTypes = map[string]ItemType {
 	"webforms.WebForm" : ItemType{
 		name : "Login",
 		contentType : reflect.TypeOf(WebFormItemContent{}),
+		shortAlias : "login",
 	},
 	"wallet.financial.CreditCard" : ItemType{
 		name : "Credit Card",
 		contentType : reflect.TypeOf(CreditCardItemContent{}),
+		shortAlias : "card",
 	},
 	"wallet.computer.Router" : ItemType{
 		name : "Wireless Router",
 		contentType : reflect.TypeOf(RouterItemContent{}),
+		shortAlias : "router",
 	},
 	"securenotes.SecureNote" : ItemType{
 		name : "Secure Note",
 		contentType : reflect.TypeOf(NoteItemContent{}),
+		shortAlias : "note",
 	},
 	"passwords.Password" : ItemType{
 		name : "Password",
 		contentType : reflect.TypeOf(PasswordItemContent{}),
+		shortAlias : "pass",
 	},
 	"wallet.onlineservices.Email.v2" : ItemType{
 		name : "Email Account",
 		contentType : reflect.TypeOf(EmailItemContent{}),
+		shortAlias : "email",
 	},
 }
 
