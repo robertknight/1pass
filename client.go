@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"code.google.com/p/go.crypto/ssh/terminal"
+	"github.com/robertknight/clipboard"
 )
 
 // attempt to locate the keychain directory automatically
@@ -198,6 +199,42 @@ func main() {
 					fmt.Fprintf(os.Stderr, "Unable to remove item: %s\n", err)
 				}
 			}
+		}
+	case "copy":
+		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern","field"})
+		checkErr(err, "")
+		pattern := posArgs[0]
+		field := posArgs[1]
+		items, err := lookupItems(&vault, pattern)
+		checkErr(err, "Unable to lookup items")
+
+		if len(items) == 0 {
+			fmt.Fprintf(os.Stderr, "No matching items")
+			os.Exit(1)
+		}
+
+		if len(items) > 1 {
+			fmt.Fprintf(os.Stderr, "Multiple matching items:")
+			for _, item := range items {
+				fmt.Fprintf(os.Stderr, "%s", item.Title)
+			}
+			os.Exit(1)
+		}
+
+		var fieldType FieldType
+		switch field {
+		case "user":
+			fieldType = UsernameField
+		case "pass":
+			fieldType = PasswordField
+		}
+		value, err := items[0].Field(fieldType)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "no match found for field")
+		}
+		err = clipboard.WriteAll(value)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to copy '%s' field to clipboard: %v\n", field, err)
 		}
 
 	default:
