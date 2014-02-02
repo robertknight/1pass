@@ -36,7 +36,7 @@ func TestItemCrypt(t *testing.T) {
 	vault := newTestVault("/tmp/vault")
 	item := newTestItem(&vault)
 	content := fmt.Sprintf("{\"data\" : \"%s\"}", alphabet)
-	err := item.SetContent(content)
+	err := item.SetContentJson(content)
 	if err != nil {
 		t.Error(err)
 	}
@@ -54,7 +54,7 @@ func TestSaveLoadRemoveItem(t *testing.T) {
 	vault := newTestVault("/tmp/vault")
 	item := newTestItem(&vault)
 	content := fmt.Sprintf("{\"data\" : \"%s\"}", "TestSaveLoadItem")
-	err := item.SetContent(content)
+	err := item.SetContentJson(content)
 	if err != nil {
 		t.Error(err)
 	}
@@ -79,7 +79,7 @@ func TestSaveLoadRemoveItem(t *testing.T) {
 	// update the saved item
 	newContent := "[true]"
 	item.Title = "New Title"
-	item.SetContent(newContent)
+	item.SetContentJson(newContent)
 	item.Save()
 
 	loadedItem, err = item.vault.LoadItem(item.Uuid)

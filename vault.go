@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"reflect"
 
 	"code.google.com/p/go.crypto/pbkdf2"
 	uuid "github.com/nu7hatch/gouuid"
@@ -65,35 +66,13 @@ type Item struct {
 	// primary domain or URL associated with the item?
 	Location      string `json:"location"`
 
+	// UUID of folder item containing this item
+	FolderUuid string `json:"folderUuid"`
+
+	// (Priority?) of the item in the favorites list
+	FaveIndex int `json:"faveIndex"`
+
 	vault *Vault
-}
-
-// holds details of the values to fill an <input> element
-// on a web form with
-type WebFormField struct {
-	Value string
-	Id string
-	Name string
-
-	// single char code identifying the type of <input> element
-	Type string
-
-	// category for the meaning of the value, eg. 'username',
-	// 'password'
-	Designation string
-}
-
-type WebFormUrl struct {
-	Label string
-	Url string
-}
-
-// struct for contents of items with the 'webforms.WebForm' type
-type WebFormContent struct {
-	Fields []WebFormField
-	Urls []WebFormUrl
-	HtmlMethod string
-	HtmlAction string
 }
 
 // struct for items in encryptionKeys.js
@@ -195,7 +174,7 @@ func (vault *Vault) AddItem(title string, itemType string, content string) (Item
 		Uuid:          hex.EncodeToString(itemId[:]),
 		vault:         vault,
 	}
-	err = item.SetContent(content)
+	err = item.SetContentJson(content)
 	if err != nil {
 		return Item{}, err
 	}
@@ -272,6 +251,7 @@ func readContentsEntry(entry []interface{}) Item {
 		Title:     entry[2].(string),
 		Location:  entry[3].(string),
 		UpdatedAt: uint64(entry[4].(float64)),
+		FolderUuid:  entry[5].(string),
 	}
 }
 
@@ -345,6 +325,8 @@ func (vault *Vault) ListItems() ([]Item, error) {
 	return items, nil
 }
 
+// returns the raw decrypted contents of the item
+// as a JSON string
 func (item *Item) Decrypt() (string, error) {
 	if len(item.Encrypted) < 16 {
 		return "", errors.New("No item data")
@@ -363,17 +345,14 @@ func (item *Item) Decrypt() (string, error) {
 }
 
 func (item *Item) Field(kind FieldType) (string, error) {
-	content, err := item.Decrypt()
+
+	content, err := item.Content()
 	if err != nil {
 		return "", err
 	}
-	switch item.TypeName {
-	case "webforms.WebForm":
-		var formContent WebFormContent
-		err = json.Unmarshal([]byte(content), &formContent)
-		if err != nil {
-			return "", err
-		}
+
+	switch itemData := content.(type) {
+	case *WebFormItemContent:
 		var designation string
 
 		switch kind {
@@ -382,16 +361,43 @@ func (item *Item) Field(kind FieldType) (string, error) {
 		case UsernameField:
 			designation = "username"
 		}
-		for _, field := range formContent.Fields {
+		for _, field := range itemData.Fields {
 			if field.Designation == designation {
 				return field.Value, nil
 			}
 		}
+	default:
+		return "", errors.New("Unsupported item type")
 	}
 	return "", errors.New("No matching field found")
 }
 
-func (item *Item) SetContent(content string) error {
+// returns a pointer to a struct containing the item's
+// decrypted content
+//
+// The type of struct depends on the item's TypeName.
+// See itemdata.go
+func (item *Item) Content() (interface{}, error) {
+	content, err := item.Decrypt()
+	if err != nil {
+		return nil, err
+	}
+
+	itemType, ok := ItemTypes[item.TypeName]
+	if !ok {
+		return nil, fmt.Errorf("Unknown item type: %v", itemType)
+	}
+
+	fieldValue := reflect.New(itemType.contentType).Interface()
+	err = json.Unmarshal([]byte(content), fieldValue)
+	if err != nil {
+		return nil, err
+	}
+
+	return fieldValue, nil
+}
+
+func (item *Item) SetContentJson(content string) error {
 	var unused interface{}
 	err := json.Unmarshal([]byte(content), &unused)
 	if err != nil {

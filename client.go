@@ -70,6 +70,17 @@ func prettyJson(src []byte) []byte {
 }
 
 func displayItem(item Item) {
+	// TODO - Prettier formatting of items
+	fmt.Printf("%s: %s: %s\n", item.Title, item.Uuid, item.ContentsHash)
+	content, err := item.Content()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to decrypt item: %s: %v", item.Title, err)
+		return
+	}
+	fmt.Printf("%+v\n", content)
+}
+
+func displayItemJson(item Item) {
 	fmt.Printf("%s: %s: %s\n", item.Title, item.Uuid, item.ContentsHash)
 	decrypted, err := item.Decrypt()
 	if err != nil {
@@ -77,6 +88,7 @@ func displayItem(item Item) {
 		return
 	}
 	fmt.Println(string(prettyJson([]byte(decrypted))))
+
 }
 
 func lookupItems(vault *Vault, pattern string) ([]Item, error) {
@@ -159,6 +171,8 @@ func main() {
 	switch mode {
 	case "list":
 		listItems(&vault)
+	case "show-json":
+		fallthrough
 	case "show":
 		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern"})
 		checkErr(err, "")
@@ -168,7 +182,11 @@ func main() {
 		checkErr(err, "Unable to lookup items")
 
 		for _, item := range items {
-			displayItem(item)
+			if mode == "show" {
+				displayItem(item)
+			} else {
+				displayItemJson(item)
+			}
 		}
 	case "add":
 		posArgs, err := positionalArgs(flag.Args()[1:], []string{"title", "type", "content"})
@@ -230,7 +248,7 @@ func main() {
 		}
 		value, err := items[0].Field(fieldType)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "no match found for field")
+			fmt.Fprintf(os.Stderr, "no match found: %v", err)
 		}
 		err = clipboard.WriteAll(value)
 		if err != nil {
