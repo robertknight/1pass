@@ -32,6 +32,8 @@ tries to find a directory called `1Password.agilekeychain` using `locate`.
  
 **copy** _pattern_ _field_ - Copy the value of the given _field_ from the item matching _pattern_ to the clipboard
 
+**set-password** - Change the master password for the vault
+
 ## Note on Vault Formats
 
 1Password has two formats for storing its data: the older [_Agile Keychain_](http://help.agilebits.com/1Password3/agile_keychain_design.html) format (used by 1Password v3

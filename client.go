@@ -346,6 +346,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to copy '%s' field to clipboard: %v\n", field, err)
 		}
 
+	case "set-password":
+		fmt.Printf("New master password: ")
+		newPwd, err := terminal.ReadPassword(0)
+		fmt.Printf("\nRe-enter new master password: ")
+		newPwd2, err := terminal.ReadPassword(0)
+		fmt.Println()
+		if !bytes.Equal(newPwd, newPwd2) {
+			fmt.Fprintf(os.Stderr, "Passwords do not match\n")
+			os.Exit(1)
+		}
+		err = vault.SetMasterPassword(string(masterPwd), string(newPwd))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to change master password: %v\n", err)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", mode)
 		os.Exit(1)

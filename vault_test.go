@@ -134,7 +134,7 @@ func TestEncryptDecryptKey(t *testing.T) {
 }
 
 func TestNewVault(t *testing.T) {
-	vaultDir := "/tmp/test-new-vault"
+	vaultDir := "test/new-vault"
 	err := os.RemoveAll(vaultDir)
 	if err != nil {
 		t.Error(err)
@@ -174,5 +174,58 @@ func TestNewVault(t *testing.T) {
 
 	if loadedText != content.Text {
 		t.Errorf("Loaded/saved item content mismatch: %v vs %v", loadedText, content.Text)
+	}
+}
+
+func TestChangePass(t *testing.T) {
+	vaultDir := "test/change-pass"
+	err := os.RemoveAll(vaultDir)
+	if err != nil {
+		t.Error(err)
+	}
+	pwd := "old-pwd"
+	vault, err := NewVault(vaultDir, pwd)
+	if err != nil {
+		t.Error(err)
+	}
+	err = vault.Unlock(pwd)
+	if err != nil {
+		t.Error(err)
+	}
+
+	content := NoteItemContent{
+		Text: "test-change-pass-note",
+	}
+	item := newTestItem(&vault)
+	err = item.SetContent(content)
+	if err != nil {
+		t.Error(err)
+	}
+	err = item.Save()
+	if err != nil {
+		t.Error(err)
+	}
+
+	newPwd := "new-pwd"
+	err = vault.SetMasterPassword(pwd, newPwd)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = vault.Unlock(newPwd)
+	if err != nil {
+		t.Error(err)
+	}
+	loadedItem, err := item.vault.LoadItem(item.Uuid)
+	if err != nil {
+		t.Error(err)
+	}
+	loadedContent, err := loadedItem.Content()
+	if err != nil {
+		t.Error(err)
+	}
+	loadedText := loadedContent.(*NoteItemContent).Text
+	if loadedText != content.Text {
+		t.Errorf("New decrypted content does not match original")
 	}
 }
