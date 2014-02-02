@@ -34,8 +34,8 @@ tries to find a directory called `1Password.agilekeychain` using `locate`.
 
 ## Note on Vault Formats
 
-1Password has two formats for storing its data: the older _Agile Keychain_ format (used by 1Password v3
-and the copy of the vault synced to Dropbox by 1Password v4) and the newer _Cloud Keychain_ format
+1Password has two formats for storing its data: the older [_Agile Keychain_](http://help.agilebits.com/1Password3/agile_keychain_design.html) format (used by 1Password v3
+and the copy of the vault synced to Dropbox by 1Password v4) and the newer [_Cloud Keychain_](http://learn.agilebits.com/1Password4/Security/keychain-design.html) format
 (used by 1Password v4 with iCloud sync).
 
 This client works with the 'old' format but at the time of writing is still compatible with
