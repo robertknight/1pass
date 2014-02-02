@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"testing"
@@ -107,5 +108,26 @@ func TestSaveLoadRemoveItem(t *testing.T) {
 	loadedItem, err = item.vault.LoadItem(item.Uuid)
 	if err == nil {
 		t.Errorf("Failed to remove saved item")
+	}
+}
+
+func TestEncryptDecryptKey(t *testing.T) {
+	pwd := []byte("the-master-password")
+	randomKey := randomBytes(1024)
+	salt := randomBytes(8)
+	iterCount := 100
+
+	encryptedKey, encryptedValidation, err := encryptKey(pwd, randomKey, salt, iterCount)
+	if err != nil {
+		t.Errorf("Failed to encrypt key: %v", err)
+	}
+
+	decryptedKey, err := decryptKey(pwd, encryptedKey, salt, iterCount, encryptedValidation)
+	if err != nil {
+		t.Errorf("Failed to decrypt key: %v", err)
+	}
+
+	if !bytes.Equal(randomKey, decryptedKey) {
+		t.Errorf("Decrypted key does not match original input")
 	}
 }

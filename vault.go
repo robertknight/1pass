@@ -145,11 +145,6 @@ func (vault *Vault) Unlock(pwd string) error {
 			return fmt.Errorf("Unexpected encrypted key length: %d", len(entry.Data))
 		}
 
-		if entry.Level != "SL5" {
-			// TESTING
-			continue
-		}
-
 		salt, encryptedKey := extractSaltAndCipherText(entry.Data)
 		decryptedKey, err := decryptKey([]byte(pwd), encryptedKey, salt, entry.Iterations, entry.Validation)
 		if err != nil {
@@ -508,6 +503,27 @@ func extractSaltAndCipherText(data []byte) ([]byte, []byte) {
 	} else {
 		return nil, data
 	}
+}
+
+func encryptKey(masterPwd []byte, decryptedKey []byte, salt []byte, iterCount int) ([]byte, []byte, error) {
+	const keyLen = 32
+	derivedKey := pbkdf2.Key(masterPwd, salt, iterCount, keyLen, sha1.New)
+	aesKey := derivedKey[0:16]
+	iv := derivedKey[16:32]
+	encryptedKey, err := aesCbcEncrypt(aesKey, decryptedKey, iv)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	validationSalt := randomBytes(8)
+	validationAesKey, validationIv := openSslKey(decryptedKey, validationSalt)
+	validationCipherText, err := aesCbcEncrypt(validationAesKey, decryptedKey, validationIv)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to encrypt validation: %v", err)
+	}
+	validation := []byte("Salted__" + string(validationSalt) + string(validationCipherText))
+
+	return encryptedKey, validation, nil
 }
 
 func decryptKey(masterPwd []byte, encryptedKey []byte, salt []byte, iterCount int, validation []byte) ([]byte, error) {
