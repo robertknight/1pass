@@ -419,12 +419,10 @@ func (item *Item) SetContentJson(content string) error {
 }
 
 func (item *Item) Type() string {
-	switch item.TypeName {
-	case "wallet.financial.CreditCard":
-		return "Credit Card"
-	case "webforms.WebForm":
-		return "Login"
-	default:
+	itemType, ok := ItemTypes[item.TypeName]
+	if ok {
+		return itemType.name
+	} else {
 		return "Unknown"
 	}
 }
