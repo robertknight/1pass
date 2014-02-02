@@ -41,8 +41,8 @@ type Vault struct {
 type Item struct {
 	// UNIX timestamp specifying last modification
 	// time for item
-	UpdatedAt     uint64 `json:"updatedAt"`
-	Title         string `json:"title"`
+	UpdatedAt uint64 `json:"updatedAt"`
+	Title     string `json:"title"`
 
 	// identifies the encryption key from the encryptionKeys.js
 	// file used to encrypt the item
@@ -50,21 +50,21 @@ type Item struct {
 
 	// JSON content of the item, encrypted with the key identified
 	// by 'SecurityLevel' from encryptionKeys.js
-	Encrypted     []byte `json:"encrypted"`
-	ContentsHash  string `json:"contentsHash"`
+	Encrypted    []byte `json:"encrypted"`
+	ContentsHash string `json:"contentsHash"`
 
 	// type code identifying the type of item, eg. 'webforms.WebForm'
 	// for a web form
-	TypeName      string `json:"typeName"`
+	TypeName string `json:"typeName"`
 
 	// randomly generated UUID for the item
-	Uuid          string `json:"uuid"`
+	Uuid string `json:"uuid"`
 
 	// UNIX timestamp containing the creation time of the item
-	CreatedAt     uint64 `json:"createdAt"`
+	CreatedAt uint64 `json:"createdAt"`
 
 	// primary domain or URL associated with the item?
-	Location      string `json:"location"`
+	Location string `json:"location"`
 
 	// UUID of folder item containing this item
 	FolderUuid string `json:"folderUuid"`
@@ -79,9 +79,9 @@ type Item struct {
 type encKeyEntry struct {
 	// random 1024-byte encryption key, encrypted with
 	// a key derived from the master password using PBKDF2
-	Data       []byte
+	Data []byte
 
-	// randomly generated UUID identifying the key 
+	// randomly generated UUID identifying the key
 	Identifier string
 
 	// number of iterations of PBKDF2 to apply to
@@ -91,7 +91,7 @@ type encKeyEntry struct {
 
 	// security level of key. Referenced by 'securityLevel' field
 	// in individual items
-	Level      string
+	Level string
 
 	// copy of decryption key encrypted with itself
 	Validation []byte
@@ -241,12 +241,12 @@ func readContentsEntry(entry []interface{}) Item {
 	}
 	// TODO - Typecheck this
 	return Item{
-		Uuid:      entry[0].(string),
-		TypeName:  entry[1].(string),
-		Title:     entry[2].(string),
-		Location:  entry[3].(string),
-		UpdatedAt: uint64(entry[4].(float64)),
-		FolderUuid:  entry[5].(string),
+		Uuid:       entry[0].(string),
+		TypeName:   entry[1].(string),
+		Title:      entry[2].(string),
+		Location:   entry[3].(string),
+		UpdatedAt:  uint64(entry[4].(float64)),
+		FolderUuid: entry[5].(string),
 	}
 }
 
