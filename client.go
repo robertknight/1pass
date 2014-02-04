@@ -205,7 +205,8 @@ func createNewVault(path string) {
 		os.Exit(1)
 	}
 
-	_, err = NewVault(path, string(masterPwd))
+	security := VaultSecurity{MasterPwd: string(masterPwd)}
+	_, err = NewVault(path, security)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create new vault: %v", err)
 	}
@@ -347,11 +348,7 @@ func main() {
 		}
 
 	case "set-password":
-		// FIXME: This only updates encryptionKeys.js. It also needs to update
-		// 1Password.keys, (.1password.keys as well?) and the .password.hint
-		// file
-		//
-		// 1Password for iOS uses the 1Password.keys file
+		// TODO - Prompt for hint and save that to the .password.hint file
 		fmt.Printf("New master password: ")
 		newPwd, err := terminal.ReadPassword(0)
 		fmt.Printf("\nRe-enter new master password: ")

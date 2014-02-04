@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strings"
 
 	"code.google.com/p/go.crypto/pbkdf2"
 	uuid "github.com/nu7hatch/gouuid"
@@ -28,6 +29,8 @@ type FieldType int
 
 const Aes128KeyLen = 16
 const AesBlockLen = 16
+
+var PbkdfIterations = 17094
 
 type Vault struct {
 	Path string
@@ -105,6 +108,14 @@ type encryptionKeys struct {
 	SL5 string
 }
 
+func newItemId() string {
+	id, err := uuid.NewV4()
+	if err != nil {
+		panic("Failed to generate UUID")
+	}
+	return strings.ToUpper(hex.EncodeToString(id[:]))
+}
+
 func CheckVault(vaultPath string) error {
 	_, err := os.Stat(vaultPath)
 	if err != nil {
@@ -124,11 +135,29 @@ func CheckVault(vaultPath string) error {
 	return nil
 }
 
+// specifies the security settings for a new
+// vault
+type VaultSecurity struct {
+	MasterPwd string
+	// number of iterations of the PBKDF2 function to
+	// apply to the master password. More iterations
+	// will slow down password cracking but also slow
+	// down unlocking the vault
+	Iterations int
+}
+
 // Creates a new vault in 'vaultPath' and a random master key, encrypted
 // with 'masterPwd'
 //
 // The returned vault is initially locked
-func NewVault(vaultPath string, masterPwd string) (Vault, error) {
+func NewVault(vaultPath string, security VaultSecurity) (Vault, error) {
+	// number of iterations used by current version of 1Password
+	// iOS app
+	const defaultPbkdfIterations = 17094
+	if security.Iterations == 0 {
+		security.Iterations = defaultPbkdfIterations
+	}
+
 	_, err := os.Stat(vaultPath)
 	if !os.IsNotExist(err) {
 		return Vault{}, fmt.Errorf("Vault %s already exists", vaultPath)
@@ -147,34 +176,26 @@ func NewVault(vaultPath string, masterPwd string) (Vault, error) {
 	}
 
 	// create encryptionKeys.js file
-	const pbkdfIterations = 1000
 	randomKey := randomBytes(1024)
 	salt := randomBytes(8)
-	encryptedKey, validation, err := encryptKey([]byte(masterPwd), randomKey, salt, pbkdfIterations)
+	encryptedKey, validation, err := encryptKey([]byte(security.MasterPwd), randomKey, salt, security.Iterations)
 	if err != nil {
 		return Vault{}, fmt.Errorf("Failed to generate encryption key")
 	}
 
-	mainKeyId, err := uuid.NewV4()
-	if err != nil {
-		return Vault{}, fmt.Errorf("Failed to generate encryption key ID: %v", err)
-	}
-
 	mainKey := encKeyEntry{
 		Data:       []byte(fmt.Sprintf("Salted__%s%s", salt, encryptedKey)),
-		Identifier: hex.EncodeToString(mainKeyId[:]),
-		Iterations: pbkdfIterations,
+		Identifier: newItemId(),
+		Iterations: security.Iterations,
 		Level:      "SL5",
 		Validation: validation,
 	}
-	err = writeJsonFile(dataDir+"/encryptionKeys.js", encryptionKeys{
+
+	keyList := encryptionKeys{
 		List: []encKeyEntry{mainKey},
 		SL5:  mainKey.Identifier,
-	})
-	if err != nil {
-		return Vault{}, fmt.Errorf("Failed to save encryption key")
 	}
-
+	err = saveEncryptionKeys(dataDir, keyList)
 	return Vault{
 		Path: dataDir,
 		keys: map[string][]byte{},
@@ -221,6 +242,15 @@ func (vault *Vault) Unlock(pwd string) error {
 	return nil
 }
 
+func saveEncryptionKeys(dataDir string, keyList encryptionKeys) (err error) {
+	err = writeJsonFile(dataDir+"/encryptionKeys.js", keyList)
+	if err != nil {
+		return
+	}
+	err = writePlistFile(dataDir+"/1password.keys", keyList)
+	return
+}
+
 // Changes the master password for the vault. The main encryption key
 // is first decrypted using the current password, then re-encrypted
 // using the new password
@@ -254,29 +284,24 @@ func (vault *Vault) SetMasterPassword(currentPwd string, newPwd string) error {
 		keyList.List[i] = entry
 	}
 
-	// write updated encryptionKeys.js file
-	err = writeJsonFile(keyFilePath, keyList)
+	err = saveEncryptionKeys(vault.Path, keyList)
 	if err != nil {
-		return fmt.Errorf("Failed to update encryption key file: %v", err)
+		return fmt.Errorf("Failed to save updated keys: %v", err)
 	}
 
 	return nil
 }
 
 func (vault *Vault) AddItem(title string, itemType string, content interface{}) (Item, error) {
-	itemId, err := uuid.NewV4()
-	if err != nil {
-		return Item{}, err
-	}
 	item := Item{
 		Title:         title,
 		SecurityLevel: "SL5",
 		Encrypted:     []byte{},
 		TypeName:      itemType,
-		Uuid:          hex.EncodeToString(itemId[:]),
+		Uuid:          newItemId(),
 		vault:         vault,
 	}
-	err = item.SetContent(content)
+	err := item.SetContent(content)
 	if err != nil {
 		return Item{}, err
 	}
@@ -687,16 +712,23 @@ func readJsonFile(path string, out interface{}) error {
 	return nil
 }
 
+type MarshalFunc func(interface{}) ([]byte, error)
+
+func marshalToFile(path string, in interface{}, marshal MarshalFunc) error {
+	data, err := marshal(in)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(path, data, 0644)
+	return err
+}
+
+func writePlistFile(path string, in interface{}) error {
+	return marshalToFile(path, in, MarshalPlist)
+}
+
 func writeJsonFile(path string, in interface{}) error {
-	json, err := json.Marshal(in)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(path, json, 0644)
-	if err != nil {
-		return err
-	}
-	return nil
+	return marshalToFile(path, in, json.Marshal)
 }
 
 // derive an AES-128 key and initialization vector from an arbitrary-length

@@ -140,12 +140,15 @@ func TestNewVault(t *testing.T) {
 		t.Error(err)
 	}
 
-	pwd := "the-master-pwd"
-	vault, err := NewVault(vaultDir, pwd)
+	security := VaultSecurity{
+		MasterPwd:  "the-master-pwd",
+		Iterations: 100,
+	}
+	vault, err := NewVault(vaultDir, security)
 	if err != nil {
 		t.Error(err)
 	}
-	err = vault.Unlock(pwd)
+	err = vault.Unlock(security.MasterPwd)
 	if err != nil {
 		t.Errorf("Error unlocking new vault: %v", err)
 	}
@@ -183,12 +186,16 @@ func TestChangePass(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	pwd := "old-pwd"
-	vault, err := NewVault(vaultDir, pwd)
+
+	security := VaultSecurity{
+		MasterPwd:  "old-pwd",
+		Iterations: 100,
+	}
+	vault, err := NewVault(vaultDir, security)
 	if err != nil {
 		t.Error(err)
 	}
-	err = vault.Unlock(pwd)
+	err = vault.Unlock(security.MasterPwd)
 	if err != nil {
 		t.Error(err)
 	}
@@ -207,7 +214,7 @@ func TestChangePass(t *testing.T) {
 	}
 
 	newPwd := "new-pwd"
-	err = vault.SetMasterPassword(pwd, newPwd)
+	err = vault.SetMasterPassword(security.MasterPwd, newPwd)
 	if err != nil {
 		t.Error(err)
 	}
