@@ -15,6 +15,22 @@ import (
 	"github.com/robertknight/clipboard"
 )
 
+type clientConfig struct {
+	VaultDir string
+}
+
+var configPath = os.Getenv("HOME") + "/.1pass"
+
+func readConfig() clientConfig {
+	var config clientConfig
+	_ = readJsonFile(configPath, &config)
+	return config
+}
+
+func writeConfig(config clientConfig) {
+	_ = writeJsonFile(configPath, config)
+}
+
 // generate a random password with default settings
 // for length and characters
 func genDefaultPassword() string {
@@ -220,13 +236,7 @@ func createNewVault(path string) {
 
 func main() {
 	flag.Parse()
-
-	keyChains := findKeyChainDirs()
-	if len(keyChains) == 0 {
-		fmt.Fprintf(os.Stderr, "Keychain path not specified")
-		os.Exit(1)
-	}
-	keyChainDir := keyChains[0]
+	config := readConfig()
 
 	if len(flag.Args()) < 1 {
 		fmt.Fprintf(os.Stderr, "Usage: %s <mode> <args>\n", os.Args[0])
@@ -235,7 +245,9 @@ func main() {
 
 	mode := flag.Args()[0]
 
-	// create a new vault if the mode is 'new'
+	// handle command modes that do not require
+	// a vault to be opened
+	handled := true
 	if mode == "new" {
 		posArgs, err := positionalArgs(flag.Args()[1:], []string{"path"})
 		if err != nil {
@@ -245,28 +257,52 @@ func main() {
 		checkErr(err, "")
 		path := posArgs[0]
 		createNewVault(path)
-		return
-	}
-
-	if mode == "gen-password" {
+	} else if mode == "gen-password" {
 		fmt.Printf("%s\n", genDefaultPassword())
+	} else if mode == "set-vault" {
+		posArgs, err := positionalArgs(flag.Args()[1:], []string{"path"})
+		if err == nil {
+			config.VaultDir = posArgs[0]
+		} else {
+			config.VaultDir = ""
+		}
+		writeConfig(config)
+	} else {
+		handled = false
+	}
+	if handled {
 		return
 	}
 
-	// unlock vault
-	fmt.Printf("Using keychain in %s\n", keyChainDir)
+	// open vault for other commands
+	if config.VaultDir == "" {
+		keyChains := findKeyChainDirs()
+		if len(keyChains) == 0 {
+			fmt.Fprintf(os.Stderr, "Keychain path not specified")
+			os.Exit(1)
+		}
+		config.VaultDir = keyChains[0]
+		writeConfig(config)
+	}
+	vault, err := OpenVault(config.VaultDir)
+	if err != nil {
+		fmt.Printf("Unable to setup vault: %v\n", err)
+		os.Exit(1)
+	}
+
+	if mode == "info" {
+		fmt.Printf("Vault path: %s\n", config.VaultDir)
+		return
+	}
+
+	// unlock vault for remaining commands
+	fmt.Printf("Using keychain in %s\n", config.VaultDir)
 	fmt.Printf("Master password: ")
 	masterPwd, err := terminal.ReadPassword(0)
 	if err != nil {
 		os.Exit(1)
 	}
 	fmt.Println()
-
-	vault, err := OpenVault(keyChainDir)
-	if err != nil {
-		fmt.Printf("Unable to setup vault: %v\n", err)
-		os.Exit(1)
-	}
 
 	err = vault.Unlock(string(masterPwd))
 	if err != nil {

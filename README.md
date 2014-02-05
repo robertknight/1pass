@@ -36,6 +36,10 @@ tries to find a directory called `1Password.agilekeychain` using `locate`.
 
 **gen-password** - Generate a readable random password containing a mix of upper and lower-case letters and digits
 
+**set-vault** _[path]_ - Sets the path to the 1Password vault to use. If _path_ is not specified, attempts to find a vault in a default location.
+
+**info** - Displays information about the current vault
+
 ## Note on Vault Formats
 
 1Password has two formats for storing its data: the older [_Agile Keychain_](http://help.agilebits.com/1Password3/agile_keychain_design.html) format (used by 1Password v3
