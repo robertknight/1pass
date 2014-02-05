@@ -328,6 +328,72 @@ func printHelp(cmd string) {
 	}
 }
 
+func changeMasterPassword(vault *Vault, currentPwd string) {
+	// TODO - Prompt for hint and save that to the .password.hint file
+	fmt.Printf("New master password: ")
+	newPwd, err := terminal.ReadPassword(0)
+	fmt.Printf("\nRe-enter new master password: ")
+	newPwd2, err := terminal.ReadPassword(0)
+	fmt.Println()
+	if !bytes.Equal(newPwd, newPwd2) {
+		fmt.Fprintf(os.Stderr, "Passwords do not match\n")
+		os.Exit(1)
+	}
+	err = vault.SetMasterPassword(currentPwd, string(newPwd))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to change master password: %v\n", err)
+	}
+}
+
+func removeItems(vault *Vault, pattern string) {
+	items, err := lookupItems(vault, pattern)
+	checkErr(err, "Unable to lookup items to remove")
+
+	for _, item := range items {
+		fmt.Printf("Remove '%s' from vault? Y/N\n", item.Title)
+		if readConfirmation() {
+			err = item.Remove()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to remove item: %s\n", err)
+			}
+		}
+	}
+}
+
+func copyToClipboard(vault *Vault, pattern string, field string) {
+	items, err := lookupItems(vault, pattern)
+	checkErr(err, "Unable to lookup items")
+
+	if len(items) == 0 {
+		fmt.Fprintf(os.Stderr, "No matching items")
+		os.Exit(1)
+	}
+
+	if len(items) > 1 {
+		fmt.Fprintf(os.Stderr, "Multiple matching items:")
+		for _, item := range items {
+			fmt.Fprintf(os.Stderr, "%s", item.Title)
+		}
+		os.Exit(1)
+	}
+
+	var fieldType FieldType
+	switch field {
+	case "user":
+		fieldType = UsernameField
+	case "pass":
+		fieldType = PasswordField
+	}
+	value, err := items[0].Field(fieldType)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "no match found: %v", err)
+	}
+	err = clipboard.WriteAll(value)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to copy '%s' field to clipboard: %v\n", field, err)
+	}
+}
+
 func main() {
 	flag.Usage = func() {
 		printHelp("")
@@ -446,70 +512,17 @@ func main() {
 		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern"})
 		checkErr(err, "")
 		pattern := posArgs[0]
-		items, err := lookupItems(&vault, pattern)
-		checkErr(err, "Unable to lookup items to remove")
+		removeItems(&vault, pattern)
 
-		for _, item := range items {
-			fmt.Printf("Remove '%s' from vault? Y/N\n", item.Title)
-			if readConfirmation() {
-				err = item.Remove()
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Unable to remove item: %s\n", err)
-				}
-			}
-		}
 	case "copy":
 		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern", "field"})
 		checkErr(err, "")
 		pattern := posArgs[0]
 		field := posArgs[1]
-		items, err := lookupItems(&vault, pattern)
-		checkErr(err, "Unable to lookup items")
-
-		if len(items) == 0 {
-			fmt.Fprintf(os.Stderr, "No matching items")
-			os.Exit(1)
-		}
-
-		if len(items) > 1 {
-			fmt.Fprintf(os.Stderr, "Multiple matching items:")
-			for _, item := range items {
-				fmt.Fprintf(os.Stderr, "%s", item.Title)
-			}
-			os.Exit(1)
-		}
-
-		var fieldType FieldType
-		switch field {
-		case "user":
-			fieldType = UsernameField
-		case "pass":
-			fieldType = PasswordField
-		}
-		value, err := items[0].Field(fieldType)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "no match found: %v", err)
-		}
-		err = clipboard.WriteAll(value)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to copy '%s' field to clipboard: %v\n", field, err)
-		}
+		copyToClipboard(&vault, pattern, field)
 
 	case "set-password":
-		// TODO - Prompt for hint and save that to the .password.hint file
-		fmt.Printf("New master password: ")
-		newPwd, err := terminal.ReadPassword(0)
-		fmt.Printf("\nRe-enter new master password: ")
-		newPwd2, err := terminal.ReadPassword(0)
-		fmt.Println()
-		if !bytes.Equal(newPwd, newPwd2) {
-			fmt.Fprintf(os.Stderr, "Passwords do not match\n")
-			os.Exit(1)
-		}
-		err = vault.SetMasterPassword(string(masterPwd), string(newPwd))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to change master password: %v\n", err)
-		}
+		changeMasterPassword(&vault, string(masterPwd))
 
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", mode)
