@@ -18,6 +18,8 @@ tries to find a directory called `1Password.agilekeychain` using `locate`.
 
 ### Supported Commands:
 
+**help** - Display the list of supported commands
+
 **new** _path_ - Create a new 1Password vault in _path_
 
 **list** - List titles of all items in the vault

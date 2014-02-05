@@ -15,6 +15,70 @@ import (
 	"github.com/robertknight/clipboard"
 )
 
+type commandMode struct {
+	command     string
+	description string
+	argNames    []string
+}
+
+var commandModes = []commandMode{
+	{
+		command:     "new",
+		description: "Create a new vault",
+		argNames:    []string{"path"},
+	},
+	{
+		command:     "gen-password",
+		description: "Generate a new random password",
+	},
+	{
+		command:     "set-vault",
+		description: "Set the path to the 1Password vault",
+		argNames:    []string{"path"},
+	},
+	{
+		command:     "info",
+		description: "Display info about the current vault",
+	},
+	{
+		command:     "list",
+		description: "List items in the vault",
+	},
+	{
+		command:     "show-json",
+		description: "Show the raw decrypted JSON for the given item",
+		argNames:    []string{"pattern"},
+	},
+	{
+		command:     "show",
+		description: "Display the details of the given item",
+		argNames:    []string{"pattern"},
+	},
+	{
+		command:     "add",
+		description: "Add a new item to the vault",
+		argNames:    []string{"type", "title"},
+	},
+	{
+		command:     "remove",
+		description: "Remove items from the vault matching the given pattern",
+		argNames:    []string{"pattern"},
+	},
+	{
+		command:     "copy",
+		description: "Copy information from the given item to the clipboard",
+		argNames:    []string{"pattern", "field"},
+	},
+	{
+		command:     "set-password",
+		description: "Change the master password for the vault",
+	},
+	{
+		command:     "help",
+		description: "Display usage information",
+	},
+}
+
 type clientConfig struct {
 	VaultDir string
 }
@@ -234,12 +298,25 @@ func createNewVault(path string) {
 	}
 }
 
+func printHelp() {
+	fmt.Fprintf(os.Stderr, "Usage: %s <command> <args>\n\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "Supported commands:\n\n")
+	sortedCommands := append([]commandMode{}, commandModes...)
+	sortSlice(sortedCommands, func(a, b interface{}) bool {
+		return a.(commandMode).command < b.(commandMode).command
+	})
+	for _, cmd := range sortedCommands {
+		fmt.Fprintf(os.Stderr, "  %s\t\t%s\n", cmd.command, cmd.description)
+	}
+	fmt.Fprintf(os.Stderr, "\n")
+}
+
 func main() {
 	flag.Parse()
 	config := readConfig()
 
-	if len(flag.Args()) < 1 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <mode> <args>\n", os.Args[0])
+	if len(flag.Args()) < 1 || flag.Args()[0] == "help" {
+		printHelp()
 		os.Exit(1)
 	}
 
