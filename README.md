@@ -34,6 +34,8 @@ tries to find a directory called `1Password.agilekeychain` using `locate`.
 
 **set-password** - Change the master password for the vault
 
+**gen-password** - Generate a readable random password containing a mix of upper and lower-case letters and digits
+
 ## Note on Vault Formats
 
 1Password has two formats for storing its data: the older [_Agile Keychain_](http://help.agilebits.com/1Password3/agile_keychain_design.html) format (used by 1Password v3

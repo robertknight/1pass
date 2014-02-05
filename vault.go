@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"crypto/sha1"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -15,6 +16,7 @@ import (
 	"path"
 	"reflect"
 	"strings"
+	"unicode"
 
 	"code.google.com/p/go.crypto/pbkdf2"
 	uuid "github.com/nu7hatch/gouuid"
@@ -751,4 +753,48 @@ func openSslKey(password []byte, salt []byte) (key []byte, iv []byte) {
 	key = md5Hashes[0]
 	iv = md5Hashes[1]
 	return
+}
+
+func genPasswordCandidate(length int) string {
+	base64Data := ""
+	output := ""
+	sectionSize := 3
+	for i := 0; len(output) < length; i++ {
+		if i >= len(base64Data) {
+			base64Data = base64Data + base64.StdEncoding.EncodeToString(randomBytes(length))
+		}
+		if base64Data[i] != '+' &&
+			base64Data[i] != '/' &&
+			base64Data[i] != '=' {
+			if len(output)%(sectionSize+1) == sectionSize &&
+				length-len(output) > 1 {
+				output += string('-')
+			}
+			output += string(base64Data[i])
+		}
+	}
+	return output
+}
+
+// generate a password suitable for use on most input forms
+// Generated passwords will contain length chars at at least
+// one upper case letter, one lower case letter and one digit
+func GenPassword(length int) string {
+	if length < 4 {
+		panic("Minimum password length is 4 chars")
+	}
+	for {
+		candidate := genPasswordCandidate(length)
+		hasLower := false
+		hasUpper := false
+		hasDigit := false
+		for _, ch := range candidate {
+			hasLower = hasLower || unicode.IsLower(ch)
+			hasUpper = hasUpper || unicode.IsUpper(ch)
+			hasDigit = hasDigit || unicode.IsDigit(ch)
+		}
+		if hasLower && hasUpper && hasDigit {
+			return candidate
+		}
+	}
 }

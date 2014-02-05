@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"unicode"
 
 	uuid "github.com/nu7hatch/gouuid"
 )
@@ -234,5 +235,37 @@ func TestChangePass(t *testing.T) {
 	loadedText := loadedContent.(*NoteItemContent).Text
 	if loadedText != content.Text {
 		t.Errorf("New decrypted content does not match original")
+	}
+}
+
+func acceptPwd(pwd string) bool {
+	upperCount := 0
+	lowerCount := 0
+	digitCount := 0
+	for _, ch := range pwd {
+		if unicode.IsUpper(ch) {
+			upperCount++
+		}
+		if unicode.IsLower(ch) {
+			lowerCount++
+		}
+		if unicode.IsDigit(ch) {
+			digitCount++
+		}
+	}
+	return upperCount > 0 && lowerCount > 0 && digitCount > 0
+}
+
+func TestGenPassword(t *testing.T) {
+	for length := 4; length < 20; length++ {
+		for i := 0; i < 10; i++ {
+			pwd := GenPassword(length)
+			if len(pwd) != length {
+				t.Errorf("Incorrect length: %d vs %d", len(pwd), length)
+			}
+			if !acceptPwd(pwd) {
+				t.Errorf("Password does not contain required chars: %s", pwd)
+			}
+		}
 	}
 }

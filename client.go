@@ -15,6 +15,12 @@ import (
 	"github.com/robertknight/clipboard"
 )
 
+// generate a random password with default settings
+// for length and characters
+func genDefaultPassword() string {
+	return GenPassword(12)
+}
+
 // attempt to locate the keychain directory automatically
 func findKeyChainDirs() []string {
 	paths := []string{}
@@ -242,6 +248,11 @@ func main() {
 		return
 	}
 
+	if mode == "gen-password" {
+		fmt.Printf("%s\n", genDefaultPassword())
+		return
+	}
+
 	// unlock vault
 	fmt.Printf("Using keychain in %s\n", keyChainDir)
 	fmt.Printf("Master password: ")
@@ -362,6 +373,7 @@ func main() {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to change master password: %v\n", err)
 		}
+
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", mode)
 		os.Exit(1)
