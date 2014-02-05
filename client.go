@@ -298,25 +298,49 @@ func createNewVault(path string) {
 	}
 }
 
-func printHelp() {
-	fmt.Fprintf(os.Stderr, "Usage: %s <command> <args>\n\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "Supported commands:\n\n")
-	sortedCommands := append([]commandMode{}, commandModes...)
-	sortSlice(sortedCommands, func(a, b interface{}) bool {
-		return a.(commandMode).command < b.(commandMode).command
-	})
-	for _, cmd := range sortedCommands {
-		fmt.Fprintf(os.Stderr, "  %s\t\t%s\n", cmd.command, cmd.description)
+func printHelp(cmd string) {
+	if len(cmd) == 0 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <command> <args>\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Supported commands:\n\n")
+		sortedCommands := append([]commandMode{}, commandModes...)
+		sortSlice(sortedCommands, func(a, b interface{}) bool {
+			return a.(commandMode).command < b.(commandMode).command
+		})
+		for _, cmd := range sortedCommands {
+			fmt.Fprintf(os.Stderr, "  %s\t\t%s\n", cmd.command, cmd.description)
+		}
+		fmt.Printf("\n")
+	} else {
+		found := false
+		for _, mode := range commandModes {
+			if mode.command == cmd {
+				syntax := fmt.Sprintf("%s %s", os.Args[0], mode.command)
+				for _, arg := range mode.argNames {
+					syntax = fmt.Sprintf("%s <%s>", syntax, arg)
+				}
+				fmt.Printf("%s\n\n%s\n\n", syntax, mode.description)
+				found = true
+			}
+		}
+		if !found {
+			fmt.Fprintf(os.Stderr, "No such command: '%s'\n", cmd)
+		}
 	}
-	fmt.Fprintf(os.Stderr, "\n")
 }
 
 func main() {
+	flag.Usage = func() {
+		printHelp("")
+	}
 	flag.Parse()
 	config := readConfig()
 
 	if len(flag.Args()) < 1 || flag.Args()[0] == "help" {
-		printHelp()
+		command := ""
+		if len(flag.Args()) > 1 {
+			command = flag.Args()[1]
+		}
+		printHelp(command)
 		os.Exit(1)
 	}
 
