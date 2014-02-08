@@ -156,13 +156,13 @@ func prettyJson(src []byte) []byte {
 }
 
 func displayItem(item Item) {
-	fmt.Printf("%s: %s: %s\n", item.Title, item.Uuid, item.ContentsHash)
+	fmt.Printf("%s (ID: %s)\n", item.Title, item.Uuid)
 	content, err := item.Content()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to decrypt item: %s: %v", item.Title, err)
 		return
 	}
-	printItem(0, &content)
+	fmt.Printf(content.String())
 }
 
 func displayItemJson(item Item) {
@@ -217,7 +217,7 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 	if err != nil {
 		return err
 	}
-	itemContent.Fields = []WebFormField{
+	itemContent.FormFields = []WebFormField{
 		WebFormField{Name: "username", Value: username, Type: "T", Designation: "username"},
 		WebFormField{Name: "password", Value: pass, Type: "P", Designation: "password"},
 	}

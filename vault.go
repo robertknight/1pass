@@ -491,7 +491,7 @@ func (item *Item) Field(kind FieldType) (string, error) {
 	case UsernameField:
 		designation = "username"
 	}
-	for _, field := range itemData.Fields {
+	for _, field := range itemData.FormFields {
 		if field.Designation == designation {
 			return field.Value, nil
 		}

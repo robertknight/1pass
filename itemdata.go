@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strings"
+	"time"
 )
 
 type ItemType struct {
@@ -19,22 +21,65 @@ type ItemContent struct {
 
 	// additional fields used only for
 	// web forms
-	Fields     []WebFormField `json:"fields"`
+	FormFields []WebFormField `json:"fields"`
 	HtmlMethod string         `json:"htmlMethod"`
 	HtmlAction string         `json:"htmlAction"`
 }
 
 type ItemSection struct {
 	Name   string      `json:"name"`
-	Title  string      `json:"name"`
+	Title  string      `json:"title"`
 	Fields []ItemField `json:"fields"`
 }
 
 type ItemField struct {
-	Kind  string `json:"k"`
-	Name  string `json:"n"`
-	Title string `json:"t"`
-	Value string `json:"v"`
+	Kind  string      `json:"k"`
+	Name  string      `json:"n"`
+	Title string      `json:"t"`
+	Value interface{} `json:"v"`
+}
+
+func (field ItemField) ValueString() string {
+	if field.Value == nil {
+		return ""
+	}
+
+	switch field.Kind {
+	case "address":
+		addr := AddressFromMap(field.Value.(map[string]interface{}))
+		return fmt.Sprintf("Street: %s, City: %s, Zip: %s, State: %s, Country:%s",
+			addr.Street, addr.City, addr.Zip, addr.State, addr.Country)
+	case "date":
+		return time.Unix(int64(field.Value.(float64)), 0).Format("02/01/06")
+	case "monthYear":
+		// stored as an int with digits YYYYMM
+		value := int(field.Value.(float64))
+		month := value % 100
+		year := value / 100
+		return fmt.Sprintf("%02.d/%04.d", month, year)
+	case "string", "URL", "cctype", "phone", "gender", "email", "menu":
+		return fmt.Sprintf("%s", field.Value)
+	default:
+		return fmt.Sprintf("(%s) %s", field.Kind, field.Value)
+	}
+}
+
+type ItemAddress struct {
+	Street  string
+	Country string
+	City    string
+	Zip     string
+	State   string
+}
+
+func AddressFromMap(m map[string]interface{}) ItemAddress {
+	return ItemAddress{
+		Street:  m["street"].(string),
+		City:    m["city"].(string),
+		Country: m["country"].(string),
+		Zip:     m["zip"].(string),
+		State:   m["state"].(string),
+	}
 }
 
 // Details of the input forms to fill in a web
@@ -66,72 +111,76 @@ type ItemUrl struct {
 // standard item types
 var ItemTypes = map[string]ItemType{
 	"webforms.WebForm": ItemType{
-		name:        "Login",
-		shortAlias:  "login",
+		name:       "Login",
+		shortAlias: "login",
 	},
 	"wallet.financial.CreditCard": ItemType{
-		name:        "Credit Card",
-		shortAlias:  "card",
+		name:       "Credit Card",
+		shortAlias: "card",
 	},
 	"wallet.computer.Router": ItemType{
-		name:        "Wireless Router",
-		shortAlias:  "router",
+		name:       "Wireless Router",
+		shortAlias: "router",
 	},
 	"securenotes.SecureNote": ItemType{
-		name:        "Secure Note",
-		shortAlias:  "note",
+		name:       "Secure Note",
+		shortAlias: "note",
 	},
 	"passwords.Password": ItemType{
-		name:        "Password",
-		shortAlias:  "pass",
+		name:       "Password",
+		shortAlias: "pass",
 	},
 	"wallet.onlineservices.Email.v2": ItemType{
-		name:        "Email Account",
-		shortAlias:  "email",
+		name:       "Email Account",
+		shortAlias: "email",
 	},
-	"system.folder.Regular" : ItemType{
-		name: "Folder",
+	"system.folder.Regular": ItemType{
+		name:       "Folder",
 		shortAlias: "folder",
 	},
-	"wallet.financial.BankAccountUS" : ItemType{
-		name: "Bank Account",
+	"wallet.financial.BankAccountUS": ItemType{
+		name:       "Bank Account",
 		shortAlias: "bank",
 	},
-	"wallet.computer.Database" : ItemType{
-		name: "Database",
+	"wallet.computer.Database": ItemType{
+		name:       "Database",
 		shortAlias: "db",
 	},
-	"wallet.government.DriversLicense" : ItemType{
-		name: "Driver's License",
+	"wallet.government.DriversLicense": ItemType{
+		name:       "Driver's License",
 		shortAlias: "driver",
 	},
-	"wallet.membership.Membership" : ItemType{
-		name: "Membership",
+	"wallet.membership.Membership": ItemType{
+		name:       "Membership",
 		shortAlias: "membership",
 	},
-	"wallet.government.HuntingLicense" : ItemType{
-		name: "Outdoor License",
+	"wallet.government.HuntingLicense": ItemType{
+		name:       "Outdoor License",
 		shortAlias: "outdoor",
 	},
-	"wallet.government.Passport" : ItemType{
-		name: "Passport",
+	"wallet.government.Passport": ItemType{
+		name:       "Passport",
 		shortAlias: "passport",
 	},
-	"wallet.membership.RewardProgram" : ItemType{
-		name: "Reward Program",
+	"wallet.membership.RewardProgram": ItemType{
+		name:       "Reward Program",
 		shortAlias: "reward",
 	},
-	"wallet.computer.UnixServer" : ItemType{
-		name: "Unix Server",
+	"wallet.computer.UnixServer": ItemType{
+		name:       "Unix Server",
 		shortAlias: "server",
 	},
-	"wallet.government.SsnUS" : ItemType{
-		name: "Social Security Number",
+	"wallet.government.SsnUS": ItemType{
+		name:       "Social Security Number",
 		shortAlias: "social",
 	},
-	"wallet.computer.License" : ItemType{
-		name: "Software License",
+	"wallet.computer.License": ItemType{
+		name:       "Software License",
 		shortAlias: "software",
+	},
+	"identities.Identity": ItemType{
+		name:       "Identity",
+		shortAlias: "id",
 	},
 }
 
@@ -143,18 +192,45 @@ func indentStr(n int) string {
 	return indent
 }
 
-func printItem(indent int, item *ItemContent) {
-	fmt.Printf("Sections:\n")
-	for _, section := range item.Sections {
-		fmt.Printf("  %s:\n", section.Title)
-		for _, field := range section.Fields {
-			fmt.Printf("    %s: %s\n", field.Title, field.Value)
+func (item ItemContent) String() string {
+	result := ""
+	if len(item.Sections) > 0 {
+		result += fmt.Sprintf("Sections:\n")
+		for i, section := range item.Sections {
+			if i > 0 {
+				result += "\n"
+			}
+			if len(section.Title) > 0 {
+				result += fmt.Sprintf("  %s:\n", section.Title)
+			}
+			for _, field := range section.Fields {
+				result += fmt.Sprintf("    %s: %s\n", field.Title, field.ValueString())
+			}
 		}
 	}
-	fmt.Printf("Websites:\n")
-	for _, url := range item.Urls {
-		fmt.Printf("%s: %s\n", url.Label, url.Url)
+	if len(item.Urls) > 0 {
+		if len(result) > 0 {
+			result += "\n"
+		}
+		result += fmt.Sprintf("Websites:\n")
+		for _, url := range item.Urls {
+			result += fmt.Sprintf("  %s: %s\n", url.Label, url.Url)
+		}
 	}
-	fmt.Printf("Form Fields:\n")
+	if len(item.FormFields) > 0 {
+		if len(result) > 0 {
+			result += "\n"
+		}
+		result += fmt.Sprintf("Form Fields:\n")
+		for _, field := range item.FormFields {
+			result += fmt.Sprintf("  %s (%s): %s\n", field.Name, field.Type, field.Value)
+		}
+	}
+	if len(item.HtmlAction) > 0 {
+		if len(result) > 0 {
+			result += "\n"
+		}
+		result += fmt.Sprintf("Form Destination: %s %s\n", strings.ToUpper(item.HtmlMethod), item.HtmlAction)
+	}
+	return result
 }
-
