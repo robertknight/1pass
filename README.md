@@ -20,7 +20,8 @@ The client works with the copy of the vault that is synced to Dropbox.
 `1pwd-cmd-client <command> <args>`
 
 The client looks for your 1Password vault in `~/Dropbox/1Password/1Password.agilekeychain` or
-tries to find a directory called `1Password.agilekeychain` using `locate`.
+tries to find a directory called `1Password.agilekeychain` using `locate`. If your vault cannot be found automatically,
+you can use the `set-vault` command to tell the client where to find it.
 
 ### Supported Commands:
 
