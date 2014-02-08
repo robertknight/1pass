@@ -1,7 +1,14 @@
 1pwd-cmd-client
 ===============
 
-A command-line client for 1Password.
+A command-line client for 1Password. Compatible with 1Password vaults created by 1Password
+that have been synced to Dropbox.
+
+Supports:
+ * Creating, opening and changing the master password for vaults
+ * Listing, adding and removing items in vaults
+ * Decrypting and displaying the contents of items
+ * Generating random passwords for new items
 
 ## Setup
 
@@ -44,9 +51,8 @@ tries to find a directory called `1Password.agilekeychain` using `locate`.
 
 ## Note on Vault Formats
 
-1Password has two formats for storing its data: the older [_Agile Keychain_](http://help.agilebits.com/1Password3/agile_keychain_design.html) format (used by 1Password v3
-and the copy of the vault synced to Dropbox by 1Password v4) and the newer [_Cloud Keychain_](http://learn.agilebits.com/1Password4/Security/keychain-design.html) format
-(used by 1Password v4 with iCloud sync).
+1Password has two formats for storing its data. The older [_Agile Keychain_](http://help.agilebits.com/1Password3/agile_keychain_design.html) format is used by 1Password v3
+and the copy of the vault synced to Dropbox by 1Password v4. The newer [_Cloud Keychain_](http://learn.agilebits.com/1Password4/Security/keychain-design.html) format is used by 1Password v4 when syncing to iCloud.
 
-This client works with the 'old' format but at the time of writing is still compatible with
-the current version of the 1Password app as it still uses the older format for syncing to Dropbox.
+This client works with the older format, but is still compatible with 1Password v4 as it
+uses the older format when syncing with Dropbox.
