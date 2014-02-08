@@ -14,7 +14,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"reflect"
 	"strings"
 	"unicode"
 
@@ -479,28 +478,23 @@ func (item *Item) Decrypt() (string, error) {
 
 func (item *Item) Field(kind FieldType) (string, error) {
 
-	content, err := item.Content()
+	itemData, err := item.Content()
 	if err != nil {
 		return "", err
 	}
 
-	switch itemData := content.(type) {
-	case *WebFormItemContent:
-		var designation string
+	var designation string
 
-		switch kind {
-		case PasswordField:
-			designation = "password"
-		case UsernameField:
-			designation = "username"
+	switch kind {
+	case PasswordField:
+		designation = "password"
+	case UsernameField:
+		designation = "username"
+	}
+	for _, field := range itemData.Fields {
+		if field.Designation == designation {
+			return field.Value, nil
 		}
-		for _, field := range itemData.Fields {
-			if field.Designation == designation {
-				return field.Value, nil
-			}
-		}
-	default:
-		return "", errors.New("Unsupported item type")
 	}
 	return "", errors.New("No matching field found")
 }
@@ -510,21 +504,21 @@ func (item *Item) Field(kind FieldType) (string, error) {
 //
 // The type of struct depends on the item's TypeName.
 // See itemdata.go
-func (item *Item) Content() (interface{}, error) {
+func (item *Item) Content() (ItemContent, error) {
 	content, err := item.Decrypt()
 	if err != nil {
-		return nil, err
+		return ItemContent{}, err
 	}
 
 	itemType, ok := ItemTypes[item.TypeName]
 	if !ok {
-		return nil, fmt.Errorf("Unknown item type: %v", itemType)
+		return ItemContent{}, fmt.Errorf("Unknown item type: %v", itemType)
 	}
 
-	fieldValue := reflect.New(itemType.contentType).Interface()
-	err = json.Unmarshal([]byte(content), fieldValue)
+	fieldValue := ItemContent{}
+	err = json.Unmarshal([]byte(content), &fieldValue)
 	if err != nil {
-		return nil, err
+		return ItemContent{}, err
 	}
 
 	return fieldValue, nil

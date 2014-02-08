@@ -154,8 +154,8 @@ func TestNewVault(t *testing.T) {
 		t.Errorf("Error unlocking new vault: %v", err)
 	}
 
-	content := NoteItemContent{
-		Text: "test-secure-note",
+	content := ItemContent{
+		Notes: "test-secure-note",
 	}
 
 	item := newTestItem(&vault)
@@ -174,10 +174,10 @@ func TestNewVault(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to decrypt loaded item: %v", err)
 	}
-	loadedText := loadedContent.(*NoteItemContent).Text
+	loadedText := loadedContent.Notes
 
-	if loadedText != content.Text {
-		t.Errorf("Loaded/saved item content mismatch: %v vs %v", loadedText, content.Text)
+	if loadedText != content.Notes {
+		t.Errorf("Loaded/saved item content mismatch: %v vs %v", loadedText, content.Notes)
 	}
 }
 
@@ -201,8 +201,8 @@ func TestChangePass(t *testing.T) {
 		t.Error(err)
 	}
 
-	content := NoteItemContent{
-		Text: "test-change-pass-note",
+	content := ItemContent{
+		Notes: "test-change-pass-note",
 	}
 	item := newTestItem(&vault)
 	err = item.SetContent(content)
@@ -232,8 +232,8 @@ func TestChangePass(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	loadedText := loadedContent.(*NoteItemContent).Text
-	if loadedText != content.Text {
+	loadedText := loadedContent.Notes
+	if loadedText != content.Notes {
 		t.Errorf("New decrypted content does not match original")
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"reflect"
 	"strings"
 
 	"code.google.com/p/go.crypto/ssh/terminal"
@@ -157,14 +156,13 @@ func prettyJson(src []byte) []byte {
 }
 
 func displayItem(item Item) {
-	// TODO - Prettier formatting of items
 	fmt.Printf("%s: %s: %s\n", item.Title, item.Uuid, item.ContentsHash)
 	content, err := item.Content()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to decrypt item: %s: %v", item.Title, err)
 		return
 	}
-	fmt.Printf("%+v\n", content)
+	printItem(0, &content)
 }
 
 func displayItemJson(item Item) {
@@ -199,11 +197,11 @@ func readFields(names []string, args ...*string) error {
 }
 
 func addItem(vault *Vault, title string, shortTypeName string) error {
-	var content interface{}
+	itemContent := ItemContent{}
 	var typeName string
 	for typeKey, itemType := range ItemTypes {
 		if itemType.shortAlias == shortTypeName {
-			content = reflect.New(itemType.contentType).Interface()
+			itemContent = ItemContent{}
 			typeName = typeKey
 		}
 	}
@@ -212,27 +210,22 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 	}
 
 	var location string
-	switch itemContent := content.(type) {
-	case *WebFormItemContent:
-		var username string
-		var pass string
-		var domain string
-		err := readFields([]string{"Username", "Password", "Domain"}, &username, &pass, &domain)
-		if err != nil {
-			return err
-		}
-		itemContent.Fields = []ItemField{
-			ItemField{Name: "username", Value: username, Type: "T", Designation: "username"},
-			ItemField{Name: "password", Value: pass, Type: "P", Designation: "password"},
-		}
-		itemContent.Urls = []ItemUrl{
-			ItemUrl{Label: "website", Url: domain},
-		}
-		location = domain
-	default:
-		fmt.Fprintf(os.Stderr, "Entering item details for this type is not supported")
+	var username string
+	var pass string
+	var domain string
+	err := readFields([]string{"Username", "Password", "Domain"}, &username, &pass, &domain)
+	if err != nil {
+		return err
 	}
-	item, err := vault.AddItem(title, typeName, content)
+	itemContent.Fields = []WebFormField{
+		WebFormField{Name: "username", Value: username, Type: "T", Designation: "username"},
+		WebFormField{Name: "password", Value: pass, Type: "P", Designation: "password"},
+	}
+	itemContent.Urls = []ItemUrl{
+		ItemUrl{Label: "website", Url: domain},
+	}
+	location = domain
+	item, err := vault.AddItem(title, typeName, itemContent)
 	item.Location = location
 	err = item.Save()
 	if err != nil {
