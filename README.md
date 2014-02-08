@@ -1,8 +1,7 @@
 1pwd-cmd-client
 ===============
 
-A command-line client for 1Password. Compatible with 1Password vaults created by 1Password
-that have been synced to Dropbox.
+A command-line client for 1Password. Works offline but requires Dropbox syncing to be enabled in the official 1Password apps first.
 
 Supports:
  * Creating, opening and changing the master password for vaults
