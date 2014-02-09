@@ -250,9 +250,12 @@ func lookupItems(vault *Vault, pattern string) ([]Item, error) {
 	if err != nil {
 		return items, err
 	}
+	patternLower := strings.ToLower(pattern)
 	matches := []Item{}
 	for _, item := range items {
-		if strings.Contains(strings.ToLower(item.Title), strings.ToLower(pattern)) {
+		if strings.Contains(strings.ToLower(item.Title), patternLower) {
+			matches = append(matches, item)
+		} else if strings.HasPrefix(strings.ToLower(item.Uuid), patternLower) {
 			matches = append(matches, item)
 		}
 	}
