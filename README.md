@@ -31,7 +31,7 @@ tries to find a directory called `1Password.agilekeychain` using `locate`.
 
 **list** - List titles of all items in the vault
  
-**show** _pattern_ - Show the decrypted contents of items matching _pattern_
+**show** _pattern_ - Show basic information and contents of items matching _pattern_
 
 **show-json** _pattern_ - Show the raw decrypted contents of items matching _pattern_
  
@@ -39,7 +39,8 @@ tries to find a directory called `1Password.agilekeychain` using `locate`.
 
 **remove** _pattern_ - Remove items from the vault matching _pattern_
  
-**copy** _pattern_ _field_ - Copy the value of the given _field_ from the item matching _pattern_ to the clipboard
+**copy** _pattern_ _field-pattern_ - Copy the contents of a field from the item matching _pattern_ to the clipboard.
+_field-pattern_ can be a pattern matching the title of a field, web form field or website label.
 
 **set-password** - Change the master password for the vault
 

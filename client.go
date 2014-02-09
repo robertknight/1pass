@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"code.google.com/p/go.crypto/ssh/terminal"
 	"github.com/robertknight/clipboard"
@@ -156,7 +157,17 @@ func prettyJson(src []byte) []byte {
 }
 
 func displayItem(item Item) {
-	fmt.Printf("%s (ID: %s)\n", item.Title, item.Uuid)
+	fmt.Printf("%s\n", item.Title)
+	fmt.Printf("Info:\n")
+	fmt.Printf("  ID: %s\n", item.Uuid)
+
+	updateTime := int64(item.UpdatedAt)
+	if updateTime == 0 {
+		updateTime = int64(item.CreatedAt)
+	}
+	fmt.Printf("  Updated: %s\n", time.Unix(updateTime, 0).Format("15:04 02/01/06"))
+	fmt.Println()
+
 	content, err := item.Content()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to decrypt item: %s: %v", item.Title, err)
@@ -353,7 +364,7 @@ func removeItems(vault *Vault, pattern string) {
 	}
 }
 
-func copyToClipboard(vault *Vault, pattern string, field string) {
+func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 	items, err := lookupItems(vault, pattern)
 	checkErr(err, "Unable to lookup items")
 
@@ -363,28 +374,49 @@ func copyToClipboard(vault *Vault, pattern string, field string) {
 	}
 
 	if len(items) > 1 {
-		fmt.Fprintf(os.Stderr, "Multiple matching items:")
+		fmt.Fprintf(os.Stderr, "Multiple matching items:\n")
 		for _, item := range items {
-			fmt.Fprintf(os.Stderr, "%s", item.Title)
+			fmt.Fprintf(os.Stderr, "  %s\n", item.Title)
 		}
 		os.Exit(1)
 	}
 
-	var fieldType FieldType
-	switch field {
-	case "user":
-		fieldType = UsernameField
-	case "pass":
-		fieldType = PasswordField
-	}
-	value, err := items[0].Field(fieldType)
+	content, err := items[0].Content()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "no match found: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to decrypt item '%s': %v\n", items[0].Title, err)
+		os.Exit(1)
 	}
+
+	fieldTitle := ""
+	value := ""
+	field := content.FieldByPattern(fieldPattern)
+	if field != nil {
+		fieldTitle = field.Title
+		value = field.ValueString()
+	} else {
+		formField := content.FormFieldByPattern(fieldPattern)
+		if formField != nil {
+			fieldTitle = formField.Name
+			value = formField.Value
+		} else {
+			urlField := content.UrlByPattern(fieldPattern)
+			if urlField != nil {
+				fieldTitle = urlField.Label
+				value = urlField.Url
+			}
+		}
+	}
+
+	if len(value) == 0 {
+		fmt.Fprintf(os.Stderr, "Item has no fields, web form fields or websites matching pattern '%s'\n", fieldPattern)
+	}
+
 	err = clipboard.WriteAll(value)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to copy '%s' field to clipboard: %v\n", field, err)
 	}
+
+	fmt.Printf("Copied '%s' to clipboard for item '%s'\n", fieldTitle, items[0].Title)
 }
 
 func main() {
@@ -483,7 +515,14 @@ func main() {
 		items, err := lookupItems(&vault, pattern)
 		checkErr(err, "Unable to lookup items")
 
-		for _, item := range items {
+		if len(items) == 0 {
+			fmt.Fprintf(os.Stderr, "No matching items\n")
+		}
+
+		for i, item := range items {
+			if i > 0 {
+				fmt.Println()
+			}
 			if mode == "show" {
 				displayItem(item)
 			} else {

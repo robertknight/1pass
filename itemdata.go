@@ -234,3 +234,37 @@ func (item ItemContent) String() string {
 	}
 	return result
 }
+
+func (item *ItemContent) FieldByPattern(pattern string) *ItemField {
+	patternLower := strings.ToLower(pattern)
+	for sectionId, section := range item.Sections {
+		for fieldId, field := range section.Fields {
+			if strings.Contains(field.Name, patternLower) ||
+				strings.Contains(field.Title, patternLower) {
+				return &item.Sections[sectionId].Fields[fieldId]
+			}
+		}
+	}
+	return nil
+}
+
+func (item *ItemContent) FormFieldByPattern(pattern string) *WebFormField {
+	patternLower := strings.ToLower(pattern)
+	for fieldId, field := range item.FormFields {
+		if strings.Contains(field.Name, patternLower) ||
+			strings.Contains(field.Designation, patternLower) {
+			return &item.FormFields[fieldId]
+		}
+	}
+	return nil
+}
+
+func (item *ItemContent) UrlByPattern(pattern string) *ItemUrl {
+	patternLower := strings.ToLower(pattern)
+	for urlId, url := range item.Urls {
+		if strings.Contains(url.Label, patternLower) {
+			return &item.Urls[urlId]
+		}
+	}
+	return nil
+}
