@@ -482,10 +482,14 @@ func main() {
 	if config.VaultDir == "" {
 		keyChains := findKeyChainDirs()
 		if len(keyChains) == 0 {
-			fmt.Fprintf(os.Stderr, "Keychain path not specified")
+			fmt.Fprintf(os.Stderr,
+				`Unable to locate a 1Password vault automatically, use '%s set-vault <path>'
+to specify an existing vault or '%s new <path>' to create a new one
+`, os.Args[0], os.Args[0])
 			os.Exit(1)
 		}
 		config.VaultDir = keyChains[0]
+		fmt.Printf("Using the password vault in '%s'\n", config.VaultDir)
 		writeConfig(config)
 	}
 	vault, err := OpenVault(config.VaultDir)
