@@ -491,7 +491,6 @@ func main() {
 	}
 
 	// unlock vault for remaining commands
-	fmt.Printf("Using keychain in %s\n", config.VaultDir)
 	fmt.Printf("Master password: ")
 	masterPwd, err := terminal.ReadPassword(0)
 	if err != nil {
@@ -501,7 +500,11 @@ func main() {
 
 	err = vault.Unlock(string(masterPwd))
 	if err != nil {
-		fmt.Printf("Unable to unlock vault: %v\n", err)
+		if _, isPassError := err.(DecryptError); isPassError {
+			fmt.Printf("Unable to unlock vault using the given password\n")
+		} else {
+			fmt.Printf("Unable to unlock vault: %v\n", err)
+		}
 		os.Exit(1)
 	}
 

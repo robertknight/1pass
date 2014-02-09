@@ -41,6 +41,8 @@ type Vault struct {
 	keys map[string][]byte
 }
 
+type DecryptError error
+
 // struct for items in <UUID>.1password files
 type Item struct {
 	// UNIX timestamp specifying last modification
@@ -235,7 +237,7 @@ func (vault *Vault) Unlock(pwd string) error {
 		salt, encryptedKey := extractSaltAndCipherText(entry.Data)
 		decryptedKey, err := decryptKey([]byte(pwd), encryptedKey, salt, entry.Iterations, entry.Validation)
 		if err != nil {
-			return fmt.Errorf("Failed to decrypt main key: %v", err)
+			return DecryptError(fmt.Errorf("Failed to decrypt main key: %v", err))
 		}
 		vault.keys[entry.Level] = decryptedKey
 	}
