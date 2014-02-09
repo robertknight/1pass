@@ -379,7 +379,7 @@ func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 	if len(items) > 1 {
 		fmt.Fprintf(os.Stderr, "Multiple matching items:\n")
 		for _, item := range items {
-			fmt.Fprintf(os.Stderr, "  %s\n", item.Title)
+			fmt.Fprintf(os.Stderr, "  %s (%s)\n", item.Title, item.Uuid)
 		}
 		os.Exit(1)
 	}
