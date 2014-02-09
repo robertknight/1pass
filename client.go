@@ -309,12 +309,21 @@ func printHelp(cmd string) {
 	if len(cmd) == 0 {
 		fmt.Fprintf(os.Stderr, "Usage: %s <command> <args>\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Supported commands:\n\n")
+
+		maxCmdLen := 0
+		for _, cmd := range commandModes {
+			if cmdLen := len(cmd.command); cmdLen > maxCmdLen {
+				maxCmdLen = cmdLen
+			}
+		}
+
 		sortedCommands := append([]commandMode{}, commandModes...)
 		sortSlice(sortedCommands, func(a, b interface{}) bool {
 			return a.(commandMode).command < b.(commandMode).command
 		})
 		for _, cmd := range sortedCommands {
-			fmt.Fprintf(os.Stderr, "  %s\t\t%s\n", cmd.command, cmd.description)
+			padding := maxCmdLen - len(cmd.command) + 2
+			fmt.Fprintf(os.Stderr, "  %s%*.s%s\n", cmd.command, padding, "", cmd.description)
 		}
 		fmt.Printf("\n")
 	} else {
