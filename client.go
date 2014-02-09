@@ -25,7 +25,7 @@ var commandModes = []commandMode{
 	{
 		command:     "new",
 		description: "Create a new vault",
-		argNames:    []string{"path"},
+		argNames:    []string{"[path]"},
 	},
 	{
 		command:     "gen-password",
@@ -34,7 +34,7 @@ var commandModes = []commandMode{
 	{
 		command:     "set-vault",
 		description: "Set the path to the 1Password vault",
-		argNames:    []string{"path"},
+		argNames:    []string{"[path]"},
 	},
 	{
 		command:     "info",
@@ -262,6 +262,30 @@ func lookupItems(vault *Vault, pattern string) ([]Item, error) {
 	return matches, nil
 }
 
+func parseCmdArgs(cmdName string, cmdArgs []string, out ...*string) error {
+	requiredArgs := 0
+	argNames := []string{}
+	for _, mode := range commandModes {
+		if mode.command == cmdName {
+			for _, argName := range mode.argNames {
+				if !strings.HasPrefix(argName, "[") {
+					requiredArgs++
+				}
+			}
+		}
+	}
+	if len(cmdArgs) < requiredArgs {
+		return fmt.Errorf("Missing arguments: %s", strings.Join(argNames[len(cmdArgs):requiredArgs], ", "))
+	}
+	if len(cmdArgs) > len(out) {
+		return fmt.Errorf("Additional unused arguments: %s", strings.Join(cmdArgs[len(out):], ", "))
+	}
+	for i, _ := range cmdArgs {
+		*out[i] = cmdArgs[i]
+	}
+	return nil
+}
+
 func positionalArgs(args []string, names []string) ([]string, error) {
 	if len(args) < len(names) {
 		return nil, fmt.Errorf("Missing arguments: %s", strings.Join(names[len(args):], ", "))
@@ -332,7 +356,13 @@ func printHelp(cmd string) {
 			if mode.command == cmd {
 				syntax := fmt.Sprintf("%s %s", os.Args[0], mode.command)
 				for _, arg := range mode.argNames {
-					syntax = fmt.Sprintf("%s <%s>", syntax, arg)
+					if strings.HasPrefix(arg, "[") {
+						// optional arg
+						syntax = fmt.Sprintf("%s %s", syntax, arg)
+					} else {
+						// required arg
+						syntax = fmt.Sprintf("%s <%s>", syntax, arg)
+					}
 				}
 				fmt.Printf("%s\n\n%s\n\n", syntax, mode.description)
 				found = true
@@ -448,28 +478,25 @@ func main() {
 	}
 
 	mode := flag.Args()[0]
+	cmdArgs := flag.Args()[1:]
 
 	// handle command modes that do not require
 	// a vault to be opened
 	handled := true
 	if mode == "new" {
-		posArgs, err := positionalArgs(flag.Args()[1:], []string{"path"})
-		if err != nil {
-			posArgs = []string{os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain"}
+		var path string
+		_ = parseCmdArgs(mode, cmdArgs, &path)
+		if len(path) == 0 {
+			path = os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain"
 		}
-		fmt.Printf("Creating new vault in '%s'\n", posArgs[0])
-		checkErr(err, "")
-		path := posArgs[0]
+		fmt.Printf("Creating new vault in '%s'\n", path)
 		createNewVault(path)
 	} else if mode == "gen-password" {
 		fmt.Printf("%s\n", genDefaultPassword())
 	} else if mode == "set-vault" {
-		posArgs, err := positionalArgs(flag.Args()[1:], []string{"path"})
-		if err == nil {
-			config.VaultDir = posArgs[0]
-		} else {
-			config.VaultDir = ""
-		}
+		var newPath string
+		_ = parseCmdArgs(mode, cmdArgs, &newPath)
+		config.VaultDir = newPath
 		writeConfig(config)
 	} else {
 		handled = false
@@ -527,10 +554,10 @@ to specify an existing vault or '%s new <path>' to create a new one
 	case "show-json":
 		fallthrough
 	case "show":
-		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern"})
+		var pattern string
+		err = parseCmdArgs(mode, cmdArgs, &pattern)
 		checkErr(err, "")
 
-		pattern := posArgs[0]
 		items, err := lookupItems(&vault, pattern)
 		checkErr(err, "Unable to lookup items")
 
@@ -549,27 +576,27 @@ to specify an existing vault or '%s new <path>' to create a new one
 			}
 		}
 	case "add":
-		posArgs, err := positionalArgs(flag.Args()[1:], []string{"type", "title"})
+		var itemType string
+		var title string
+		err = parseCmdArgs(mode, cmdArgs, &itemType, &title)
 		checkErr(err, "")
 
-		itemType := posArgs[0]
-		title := posArgs[1]
 		err = addItem(&vault, title, itemType)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to add item: %v\n", err)
 			os.Exit(1)
 		}
 	case "remove":
-		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern"})
+		var pattern string
+		err = parseCmdArgs(mode, cmdArgs, &pattern)
 		checkErr(err, "")
-		pattern := posArgs[0]
 		removeItems(&vault, pattern)
 
 	case "copy":
-		posArgs, err := positionalArgs(flag.Args()[1:], []string{"pattern", "field"})
+		var pattern string
+		var field string
+		err = parseCmdArgs(mode, cmdArgs, &pattern, &field)
 		checkErr(err, "")
-		pattern := posArgs[0]
-		field := posArgs[1]
 		copyToClipboard(&vault, pattern, field)
 
 	case "set-password":
