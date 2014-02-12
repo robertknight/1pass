@@ -194,7 +194,6 @@ func NewVault(vaultPath string, security VaultSecurity) (Vault, error) {
 	err = saveEncryptionKeys(dataDir, keyList)
 	return Vault{
 		Path: dataDir,
-		keys: map[string][]byte{},
 	}, nil
 }
 
@@ -208,7 +207,6 @@ func OpenVault(vaultPath string) (Vault, error) {
 
 	return Vault{
 		Path: vaultPath + "/data/default",
-		keys: map[string][]byte{},
 	}, nil
 }
 
@@ -222,6 +220,7 @@ func (vault *Vault) Unlock(pwd string) error {
 		return errors.New("Failed to read encryption key file")
 	}
 
+	keys := map[string][]byte{}
 	for _, entry := range keyList.List {
 		if len(entry.Data) != 1056 {
 			return fmt.Errorf("Unexpected encrypted key length: %d", len(entry.Data))
@@ -232,10 +231,19 @@ func (vault *Vault) Unlock(pwd string) error {
 		if err != nil {
 			return DecryptError(fmt.Errorf("Failed to decrypt main key: %v", err))
 		}
-		vault.keys[entry.Level] = decryptedKey
+		keys[entry.Level] = decryptedKey
 	}
+	vault.keys = keys
 
 	return nil
+}
+
+func (vault *Vault) IsLocked() bool {
+	return vault.keys == nil
+}
+
+func (vault *Vault) Lock() {
+	vault.keys = nil
 }
 
 func saveEncryptionKeys(dataDir string, keyList encryptionKeys) (err error) {
@@ -455,6 +463,9 @@ func (vault *Vault) ListItems() ([]Item, error) {
 // returns the raw decrypted contents of the item
 // as a JSON string
 func (item *Item) Decrypt() (string, error) {
+	if item.vault.IsLocked() {
+		return "", errors.New("Vault is locked")
+	}
 	if len(item.Encrypted) < 16 {
 		return "", errors.New("No item data")
 	}
@@ -511,6 +522,9 @@ func (item *Item) SetContentJson(content string) error {
 		return fmt.Errorf("Content is not valid JSON: %v", err)
 	}
 
+	if item.vault.IsLocked() {
+		return errors.New("Vault is locked")
+	}
 	itemKey, ok := item.vault.keys[item.SecurityLevel]
 	if !ok {
 		return errors.New("No encryption key found for item")

@@ -24,22 +24,34 @@ func newTestItem(vault *Vault) Item {
 	return item
 }
 
-func newTestVault(path string) Vault {
-	vault := Vault{
-		Path: path,
-		keys: map[string][]byte{
-			"SL5": randomBytes(1024),
-		},
+func newTestVault() (Vault, error) {
+	path := os.TempDir() + "/vault"
+	err := os.RemoveAll(path)
+	if err != nil {
+		return Vault{}, err
 	}
-	writeJsonFile(vault.Path+"/contents.js", []string{})
-	return vault
+	security := VaultSecurity{
+		MasterPwd:  "test-pwd",
+		Iterations: 100,
+	}
+	vault, err := NewVault(path, security)
+	if err != nil {
+		return Vault{}, err
+	}
+	if err = vault.Unlock(security.MasterPwd); err != nil {
+		return Vault{}, err
+	}
+	return vault, nil
 }
 
 func TestItemCrypt(t *testing.T) {
-	vault := newTestVault("/tmp/vault")
+	vault, err := newTestVault()
+	if err != nil {
+		t.Fatalf("Creating test vault failed: %v", err)
+	}
 	item := newTestItem(&vault)
 	content := fmt.Sprintf("{\"data\" : \"%s\"}", alphabet)
-	err := item.SetContentJson(content)
+	err = item.SetContentJson(content)
 	if err != nil {
 		t.Error(err)
 	}
@@ -54,10 +66,13 @@ func TestItemCrypt(t *testing.T) {
 
 func TestSaveLoadRemoveItem(t *testing.T) {
 	// create and save a new item
-	vault := newTestVault("/tmp/vault")
+	vault, err := newTestVault()
+	if err != nil {
+		t.Fatalf("Creating test vault failed: %v", err)
+	}
 	item := newTestItem(&vault)
 	content := fmt.Sprintf("{\"data\" : \"%s\"}", "TestSaveLoadItem")
-	err := item.SetContentJson(content)
+	err = item.SetContentJson(content)
 	if err != nil {
 		t.Error(err)
 	}
