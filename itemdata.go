@@ -258,19 +258,9 @@ var FieldKindMap = map[string]FieldType{
 
 // template for a new item
 type ItemTemplate struct {
-	Sections []ItemTemplateSection `json:"sections"`
-}
-
-type ItemTemplateSection struct {
-	Name   string              `json:"name"`
-	Title  string              `json:"title"`
-	Fields []ItemTemplateField `json:"fields"`
-}
-
-type ItemTemplateField struct {
-	Name  string `json:"name"`
-	Title string `json:"title"`
-	Kind  string `json:"kind"`
+	Sections   []ItemSection  `json:"sections"`
+	FormFields []WebFormField `json:"fields"`
+	Urls       []ItemUrl      `json:"URLs"`
 }
 
 func (item ItemContent) String() string {

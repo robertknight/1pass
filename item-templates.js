@@ -6,49 +6,58 @@
         "title": "Identification",
         "fields": [
           {
-            "name": "firstname",
-            "title": "first name",
-            "kind": "string"
+            "k": "string",
+            "n": "firstname",
+            "t": "first name",
+            "v": null
           },
           {
-            "name": "initial",
-            "title": "initial",
-            "kind": "string"
+            "k": "string",
+            "n": "initial",
+            "t": "initial",
+            "v": null
           },
           {
-            "name": "lastname",
-            "title": "last name",
-            "kind": "string"
+            "k": "string",
+            "n": "lastname",
+            "t": "last name",
+            "v": null
           },
           {
-            "name": "sex",
-            "title": "sex",
-            "kind": "menu"
+            "k": "menu",
+            "n": "sex",
+            "t": "sex",
+            "v": null
           },
           {
-            "name": "birthdate",
-            "title": "birth date",
-            "kind": "date"
+            "k": "date",
+            "n": "birthdate",
+            "t": "birth date",
+            "v": null
           },
           {
-            "name": "occupation",
-            "title": "occupation",
-            "kind": "string"
+            "k": "string",
+            "n": "occupation",
+            "t": "occupation",
+            "v": null
           },
           {
-            "name": "company",
-            "title": "company",
-            "kind": "string"
+            "k": "string",
+            "n": "company",
+            "t": "company",
+            "v": null
           },
           {
-            "name": "department",
-            "title": "department",
-            "kind": "string"
+            "k": "string",
+            "n": "department",
+            "t": "department",
+            "v": null
           },
           {
-            "name": "jobtitle",
-            "title": "job title",
-            "kind": "string"
+            "k": "string",
+            "n": "jobtitle",
+            "t": "job title",
+            "v": null
           }
         ]
       },
@@ -57,29 +66,34 @@
         "title": "Address",
         "fields": [
           {
-            "name": "address",
-            "title": "address",
-            "kind": "address"
+            "k": "address",
+            "n": "address",
+            "t": "address",
+            "v": null
           },
           {
-            "name": "defphone",
-            "title": "default phone",
-            "kind": "phone"
+            "k": "phone",
+            "n": "defphone",
+            "t": "default phone",
+            "v": null
           },
           {
-            "name": "homephone",
-            "title": "home",
-            "kind": "phone"
+            "k": "phone",
+            "n": "homephone",
+            "t": "home",
+            "v": null
           },
           {
-            "name": "cellphone",
-            "title": "cell",
-            "kind": "phone"
+            "k": "phone",
+            "n": "cellphone",
+            "t": "cell",
+            "v": null
           },
           {
-            "name": "busphone",
-            "title": "business",
-            "kind": "phone"
+            "k": "phone",
+            "n": "busphone",
+            "t": "business",
+            "v": null
           }
         ]
       },
@@ -88,61 +102,92 @@
         "title": "Internet Details",
         "fields": [
           {
-            "name": "username",
-            "title": "username",
-            "kind": "string"
+            "k": "string",
+            "n": "username",
+            "t": "username",
+            "v": null
           },
           {
-            "name": "reminderq",
-            "title": "reminder question",
-            "kind": "string"
+            "k": "string",
+            "n": "reminderq",
+            "t": "reminder question",
+            "v": null
           },
           {
-            "name": "remindera",
-            "title": "reminder answer",
-            "kind": "string"
+            "k": "string",
+            "n": "remindera",
+            "t": "reminder answer",
+            "v": null
           },
           {
-            "name": "email",
-            "title": "email",
-            "kind": "string"
+            "k": "string",
+            "n": "email",
+            "t": "email",
+            "v": null
           },
           {
-            "name": "website",
-            "title": "website",
-            "kind": "string"
+            "k": "string",
+            "n": "website",
+            "t": "website",
+            "v": null
           },
           {
-            "name": "icq",
-            "title": "ICQ",
-            "kind": "string"
+            "k": "string",
+            "n": "icq",
+            "t": "ICQ",
+            "v": null
           },
           {
-            "name": "skype",
-            "title": "skype",
-            "kind": "string"
+            "k": "string",
+            "n": "skype",
+            "t": "skype",
+            "v": null
           },
           {
-            "name": "aim",
-            "title": "AOL/AIM",
-            "kind": "string"
+            "k": "string",
+            "n": "aim",
+            "t": "AOL/AIM",
+            "v": null
           },
           {
-            "name": "yahoo",
-            "title": "Yahoo",
-            "kind": "string"
+            "k": "string",
+            "n": "yahoo",
+            "t": "Yahoo",
+            "v": null
           },
           {
-            "name": "msn",
-            "title": "MSN",
-            "kind": "string"
+            "k": "string",
+            "n": "msn",
+            "t": "MSN",
+            "v": null
           },
           {
-            "name": "forumsig",
-            "title": "forum signature",
-            "kind": "string"
+            "k": "string",
+            "n": "forumsig",
+            "t": "forum signature",
+            "v": null
           }
         ]
+      }
+    ],
+    "fields": [],
+    "URLs": null
+  },
+  "passwords.Password": {
+    "sections": [],
+    "fields": [],
+    "URLs": [
+      {
+        "label": "website",
+        "url": ""
+      },
+      {
+        "label": "website 2",
+        "url": ""
+      },
+      {
+        "label": "website 3",
+        "url": ""
       }
     ]
   },
@@ -153,53 +198,64 @@
         "title": "",
         "fields": [
           {
-            "name": "database_type",
-            "title": "type",
-            "kind": "menu"
+            "k": "menu",
+            "n": "database_type",
+            "t": "type",
+            "v": null
           },
           {
-            "name": "hostname",
-            "title": "server",
-            "kind": "string"
+            "k": "string",
+            "n": "hostname",
+            "t": "server",
+            "v": null
           },
           {
-            "name": "port",
-            "title": "port",
-            "kind": "string"
+            "k": "string",
+            "n": "port",
+            "t": "port",
+            "v": null
           },
           {
-            "name": "database",
-            "title": "database",
-            "kind": "string"
+            "k": "string",
+            "n": "database",
+            "t": "database",
+            "v": null
           },
           {
-            "name": "username",
-            "title": "username",
-            "kind": "string"
+            "k": "string",
+            "n": "username",
+            "t": "username",
+            "v": null
           },
           {
-            "name": "password",
-            "title": "password",
-            "kind": "concealed"
+            "k": "concealed",
+            "n": "password",
+            "t": "password",
+            "v": null
           },
           {
-            "name": "sid",
-            "title": "SID",
-            "kind": "string"
+            "k": "string",
+            "n": "sid",
+            "t": "SID",
+            "v": null
           },
           {
-            "name": "alias",
-            "title": "alias",
-            "kind": "string"
+            "k": "string",
+            "n": "alias",
+            "t": "alias",
+            "v": null
           },
           {
-            "name": "options",
-            "title": "connection options",
-            "kind": "string"
+            "k": "string",
+            "n": "options",
+            "t": "connection options",
+            "v": null
           }
         ]
       }
-    ]
+    ],
+    "fields": [],
+    "URLs": null
   },
   "wallet.computer.License": {
     "sections": [
@@ -208,14 +264,16 @@
         "title": "",
         "fields": [
           {
-            "name": "product_version",
-            "title": "version",
-            "kind": "string"
+            "k": "string",
+            "n": "product_version",
+            "t": "version",
+            "v": null
           },
           {
-            "name": "reg_code",
-            "title": "license key",
-            "kind": "string"
+            "k": "string",
+            "n": "reg_code",
+            "t": "license key",
+            "v": null
           }
         ]
       },
@@ -224,19 +282,22 @@
         "title": "Customer",
         "fields": [
           {
-            "name": "reg_name",
-            "title": "licensed to",
-            "kind": "string"
+            "k": "string",
+            "n": "reg_name",
+            "t": "licensed to",
+            "v": null
           },
           {
-            "name": "reg_email",
-            "title": "registered email",
-            "kind": "email"
+            "k": "email",
+            "n": "reg_email",
+            "t": "registered email",
+            "v": null
           },
           {
-            "name": "company",
-            "title": "company",
-            "kind": "string"
+            "k": "string",
+            "n": "company",
+            "t": "company",
+            "v": null
           }
         ]
       },
@@ -245,29 +306,34 @@
         "title": "Publisher",
         "fields": [
           {
-            "name": "download_link",
-            "title": "download page",
-            "kind": "URL"
+            "k": "URL",
+            "n": "download_link",
+            "t": "download page",
+            "v": null
           },
           {
-            "name": "publisher_name",
-            "title": "publisher",
-            "kind": "string"
+            "k": "string",
+            "n": "publisher_name",
+            "t": "publisher",
+            "v": null
           },
           {
-            "name": "publisher_website",
-            "title": "website",
-            "kind": "URL"
+            "k": "URL",
+            "n": "publisher_website",
+            "t": "website",
+            "v": null
           },
           {
-            "name": "retail_price",
-            "title": "retail price",
-            "kind": "string"
+            "k": "string",
+            "n": "retail_price",
+            "t": "retail price",
+            "v": null
           },
           {
-            "name": "support_email",
-            "title": "support email",
-            "kind": "email"
+            "k": "email",
+            "n": "support_email",
+            "t": "support email",
+            "v": null
           }
         ]
       },
@@ -276,23 +342,28 @@
         "title": "Order",
         "fields": [
           {
-            "name": "order_date",
-            "title": "purchase date",
-            "kind": "date"
+            "k": "date",
+            "n": "order_date",
+            "t": "purchase date",
+            "v": null
           },
           {
-            "name": "order_number",
-            "title": "order number",
-            "kind": "string"
+            "k": "string",
+            "n": "order_number",
+            "t": "order number",
+            "v": null
           },
           {
-            "name": "order_total",
-            "title": "order total",
-            "kind": "string"
+            "k": "string",
+            "n": "order_total",
+            "t": "order total",
+            "v": null
           }
         ]
       }
-    ]
+    ],
+    "fields": [],
+    "URLs": null
   },
   "wallet.computer.UnixServer": {
     "sections": [
@@ -301,19 +372,22 @@
         "title": "",
         "fields": [
           {
-            "name": "url",
-            "title": "URL",
-            "kind": "string"
+            "k": "string",
+            "n": "url",
+            "t": "URL",
+            "v": null
           },
           {
-            "name": "username",
-            "title": "username",
-            "kind": "string"
+            "k": "string",
+            "n": "username",
+            "t": "username",
+            "v": null
           },
           {
-            "name": "password",
-            "title": "password",
-            "kind": "concealed"
+            "k": "concealed",
+            "n": "password",
+            "t": "password",
+            "v": null
           }
         ]
       },
@@ -322,19 +396,22 @@
         "title": "Admin Console",
         "fields": [
           {
-            "name": "admin_console_url",
-            "title": "admin console URL",
-            "kind": "string"
+            "k": "string",
+            "n": "admin_console_url",
+            "t": "admin console URL",
+            "v": null
           },
           {
-            "name": "admin_console_username",
-            "title": "admin console username",
-            "kind": "string"
+            "k": "string",
+            "n": "admin_console_username",
+            "t": "admin console username",
+            "v": null
           },
           {
-            "name": "admin_console_password",
-            "title": "console password",
-            "kind": "concealed"
+            "k": "concealed",
+            "n": "admin_console_password",
+            "t": "console password",
+            "v": null
           }
         ]
       },
@@ -343,28 +420,34 @@
         "title": "Hosting Provider",
         "fields": [
           {
-            "name": "name",
-            "title": "name",
-            "kind": "string"
+            "k": "string",
+            "n": "name",
+            "t": "name",
+            "v": null
           },
           {
-            "name": "website",
-            "title": "website",
-            "kind": "string"
+            "k": "string",
+            "n": "website",
+            "t": "website",
+            "v": null
           },
           {
-            "name": "support_contact_url",
-            "title": "support URL",
-            "kind": "string"
+            "k": "string",
+            "n": "support_contact_url",
+            "t": "support URL",
+            "v": null
           },
           {
-            "name": "support_contact_phone",
-            "title": "support phone",
-            "kind": "string"
+            "k": "string",
+            "n": "support_contact_phone",
+            "t": "support phone",
+            "v": null
           }
         ]
       }
-    ]
+    ],
+    "fields": [],
+    "URLs": null
   },
   "wallet.financial.BankAccountUS": {
     "sections": [
@@ -373,49 +456,58 @@
         "title": "",
         "fields": [
           {
-            "name": "bankName",
-            "title": "bank name",
-            "kind": "string"
+            "k": "string",
+            "n": "bankName",
+            "t": "bank name",
+            "v": null
           },
           {
-            "name": "owner",
-            "title": "name on account",
-            "kind": "string"
+            "k": "string",
+            "n": "owner",
+            "t": "name on account",
+            "v": null
           },
           {
-            "name": "accountType",
-            "title": "type",
-            "kind": "menu"
+            "k": "menu",
+            "n": "accountType",
+            "t": "type",
+            "v": null
           },
           {
-            "name": "routingNo",
-            "title": "routing number",
-            "kind": "string"
+            "k": "string",
+            "n": "routingNo",
+            "t": "routing number",
+            "v": null
           },
           {
-            "name": "accountNo",
-            "title": "account number",
-            "kind": "string"
+            "k": "string",
+            "n": "accountNo",
+            "t": "account number",
+            "v": null
           },
           {
-            "name": "swift",
-            "title": "SWIFT",
-            "kind": "string"
+            "k": "string",
+            "n": "swift",
+            "t": "SWIFT",
+            "v": null
           },
           {
-            "name": "iban",
-            "title": "IBAN",
-            "kind": "string"
+            "k": "string",
+            "n": "iban",
+            "t": "IBAN",
+            "v": null
           },
           {
-            "name": "telephonePin",
-            "title": "PIN",
-            "kind": "concealed"
+            "k": "concealed",
+            "n": "telephonePin",
+            "t": "PIN",
+            "v": null
           },
           {
-            "name": "9C2420A3C03B42FF8CAF75EF44DD1AA7",
-            "title": "Custom Password Field",
-            "kind": "concealed"
+            "k": "concealed",
+            "n": "9C2420A3C03B42FF8CAF75EF44DD1AA7",
+            "t": "Custom Password Field",
+            "v": null
           }
         ]
       },
@@ -424,18 +516,22 @@
         "title": "Branch Information",
         "fields": [
           {
-            "name": "branchPhone",
-            "title": "phone",
-            "kind": "phone"
+            "k": "phone",
+            "n": "branchPhone",
+            "t": "phone",
+            "v": null
           },
           {
-            "name": "branchAddress",
-            "title": "address",
-            "kind": "string"
+            "k": "string",
+            "n": "branchAddress",
+            "t": "address",
+            "v": null
           }
         ]
       }
-    ]
+    ],
+    "fields": [],
+    "URLs": null
   },
   "wallet.financial.CreditCard": {
     "sections": [
@@ -444,34 +540,40 @@
         "title": "",
         "fields": [
           {
-            "name": "cardholder",
-            "title": "cardholder name",
-            "kind": "string"
+            "k": "string",
+            "n": "cardholder",
+            "t": "cardholder name",
+            "v": null
           },
           {
-            "name": "type",
-            "title": "type",
-            "kind": "cctype"
+            "k": "cctype",
+            "n": "type",
+            "t": "type",
+            "v": null
           },
           {
-            "name": "ccnum",
-            "title": "number",
-            "kind": "string"
+            "k": "string",
+            "n": "ccnum",
+            "t": "number",
+            "v": null
           },
           {
-            "name": "cvv",
-            "title": "verification number",
-            "kind": "concealed"
+            "k": "concealed",
+            "n": "cvv",
+            "t": "verification number",
+            "v": null
           },
           {
-            "name": "expiry",
-            "title": "expiry date",
-            "kind": "monthYear"
+            "k": "monthYear",
+            "n": "expiry",
+            "t": "expiry date",
+            "v": null
           },
           {
-            "name": "validFrom",
-            "title": "valid from",
-            "kind": "monthYear"
+            "k": "monthYear",
+            "n": "validFrom",
+            "t": "valid from",
+            "v": null
           }
         ]
       },
@@ -480,29 +582,34 @@
         "title": "Contact Information",
         "fields": [
           {
-            "name": "bank",
-            "title": "issuing bank",
-            "kind": "string"
+            "k": "string",
+            "n": "bank",
+            "t": "issuing bank",
+            "v": null
           },
           {
-            "name": "phoneLocal",
-            "title": "phone (local)",
-            "kind": "phone"
+            "k": "phone",
+            "n": "phoneLocal",
+            "t": "phone (local)",
+            "v": null
           },
           {
-            "name": "phoneTollFree",
-            "title": "phone (toll free)",
-            "kind": "phone"
+            "k": "phone",
+            "n": "phoneTollFree",
+            "t": "phone (toll free)",
+            "v": null
           },
           {
-            "name": "phoneIntl",
-            "title": "phone (intl)",
-            "kind": "phone"
+            "k": "phone",
+            "n": "phoneIntl",
+            "t": "phone (intl)",
+            "v": null
           },
           {
-            "name": "website",
-            "title": "website",
-            "kind": "URL"
+            "k": "URL",
+            "n": "website",
+            "t": "website",
+            "v": null
           }
         ]
       },
@@ -511,33 +618,40 @@
         "title": "Additional Details",
         "fields": [
           {
-            "name": "pin",
-            "title": "PIN",
-            "kind": "concealed"
+            "k": "concealed",
+            "n": "pin",
+            "t": "PIN",
+            "v": null
           },
           {
-            "name": "creditLimit",
-            "title": "credit limit",
-            "kind": "string"
+            "k": "string",
+            "n": "creditLimit",
+            "t": "credit limit",
+            "v": null
           },
           {
-            "name": "cashLimit",
-            "title": "cash withdrawal limit",
-            "kind": "string"
+            "k": "string",
+            "n": "cashLimit",
+            "t": "cash withdrawal limit",
+            "v": null
           },
           {
-            "name": "interest",
-            "title": "interest rate",
-            "kind": "string"
+            "k": "string",
+            "n": "interest",
+            "t": "interest rate",
+            "v": null
           },
           {
-            "name": "issuenumber",
-            "title": "issue number",
-            "kind": "string"
+            "k": "string",
+            "n": "issuenumber",
+            "t": "issue number",
+            "v": null
           }
         ]
       }
-    ]
+    ],
+    "fields": [],
+    "URLs": null
   },
   "wallet.government.DriversLicense": {
     "sections": [
@@ -546,63 +660,76 @@
         "title": "",
         "fields": [
           {
-            "name": "fullname",
-            "title": "full name",
-            "kind": "string"
+            "k": "string",
+            "n": "fullname",
+            "t": "full name",
+            "v": null
           },
           {
-            "name": "address",
-            "title": "address",
-            "kind": "string"
+            "k": "string",
+            "n": "address",
+            "t": "address",
+            "v": null
           },
           {
-            "name": "birthdate",
-            "title": "date of birth",
-            "kind": "date"
+            "k": "date",
+            "n": "birthdate",
+            "t": "date of birth",
+            "v": null
           },
           {
-            "name": "sex",
-            "title": "sex",
-            "kind": "gender"
+            "k": "gender",
+            "n": "sex",
+            "t": "sex",
+            "v": null
           },
           {
-            "name": "height",
-            "title": "height",
-            "kind": "string"
+            "k": "string",
+            "n": "height",
+            "t": "height",
+            "v": null
           },
           {
-            "name": "number",
-            "title": "number",
-            "kind": "string"
+            "k": "string",
+            "n": "number",
+            "t": "number",
+            "v": null
           },
           {
-            "name": "class",
-            "title": "license class",
-            "kind": "string"
+            "k": "string",
+            "n": "class",
+            "t": "license class",
+            "v": null
           },
           {
-            "name": "conditions",
-            "title": "conditions / restrictions",
-            "kind": "string"
+            "k": "string",
+            "n": "conditions",
+            "t": "conditions / restrictions",
+            "v": null
           },
           {
-            "name": "state",
-            "title": "state",
-            "kind": "string"
+            "k": "string",
+            "n": "state",
+            "t": "state",
+            "v": null
           },
           {
-            "name": "country",
-            "title": "country",
-            "kind": "string"
+            "k": "string",
+            "n": "country",
+            "t": "country",
+            "v": null
           },
           {
-            "name": "expiry_date",
-            "title": "expiry date",
-            "kind": "monthYear"
+            "k": "monthYear",
+            "n": "expiry_date",
+            "t": "expiry date",
+            "v": null
           }
         ]
       }
-    ]
+    ],
+    "fields": [],
+    "URLs": null
   },
   "wallet.government.HuntingLicense": {
     "sections": [
@@ -611,43 +738,52 @@
         "title": "",
         "fields": [
           {
-            "name": "name",
-            "title": "full name",
-            "kind": "string"
+            "k": "string",
+            "n": "name",
+            "t": "full name",
+            "v": null
           },
           {
-            "name": "valid_from",
-            "title": "valid from",
-            "kind": "date"
+            "k": "date",
+            "n": "valid_from",
+            "t": "valid from",
+            "v": null
           },
           {
-            "name": "expires",
-            "title": "expires",
-            "kind": "date"
+            "k": "date",
+            "n": "expires",
+            "t": "expires",
+            "v": null
           },
           {
-            "name": "game",
-            "title": "approved wildlife",
-            "kind": "string"
+            "k": "string",
+            "n": "game",
+            "t": "approved wildlife",
+            "v": null
           },
           {
-            "name": "quota",
-            "title": "maximum quota",
-            "kind": "string"
+            "k": "string",
+            "n": "quota",
+            "t": "maximum quota",
+            "v": null
           },
           {
-            "name": "state",
-            "title": "state",
-            "kind": "string"
+            "k": "string",
+            "n": "state",
+            "t": "state",
+            "v": null
           },
           {
-            "name": "country",
-            "title": "country",
-            "kind": "string"
+            "k": "string",
+            "n": "country",
+            "t": "country",
+            "v": null
           }
         ]
       }
-    ]
+    ],
+    "fields": [],
+    "URLs": null
   },
   "wallet.government.Passport": {
     "sections": [
@@ -656,63 +792,76 @@
         "title": "",
         "fields": [
           {
-            "name": "type",
-            "title": "type",
-            "kind": "string"
+            "k": "string",
+            "n": "type",
+            "t": "type",
+            "v": null
           },
           {
-            "name": "issuing_country",
-            "title": "issuing country",
-            "kind": "string"
+            "k": "string",
+            "n": "issuing_country",
+            "t": "issuing country",
+            "v": null
           },
           {
-            "name": "number",
-            "title": "number",
-            "kind": "string"
+            "k": "string",
+            "n": "number",
+            "t": "number",
+            "v": null
           },
           {
-            "name": "fullname",
-            "title": "full name",
-            "kind": "string"
+            "k": "string",
+            "n": "fullname",
+            "t": "full name",
+            "v": null
           },
           {
-            "name": "sex",
-            "title": "sex",
-            "kind": "gender"
+            "k": "gender",
+            "n": "sex",
+            "t": "sex",
+            "v": null
           },
           {
-            "name": "nationality",
-            "title": "nationality",
-            "kind": "string"
+            "k": "string",
+            "n": "nationality",
+            "t": "nationality",
+            "v": null
           },
           {
-            "name": "issuing_authority",
-            "title": "issuing authority",
-            "kind": "string"
+            "k": "string",
+            "n": "issuing_authority",
+            "t": "issuing authority",
+            "v": null
           },
           {
-            "name": "birthdate",
-            "title": "date of birth",
-            "kind": "date"
+            "k": "date",
+            "n": "birthdate",
+            "t": "date of birth",
+            "v": null
           },
           {
-            "name": "birthplace",
-            "title": "place of birth",
-            "kind": "string"
+            "k": "string",
+            "n": "birthplace",
+            "t": "place of birth",
+            "v": null
           },
           {
-            "name": "issue_date",
-            "title": "issued on",
-            "kind": "date"
+            "k": "date",
+            "n": "issue_date",
+            "t": "issued on",
+            "v": null
           },
           {
-            "name": "expiry_date",
-            "title": "expiry date",
-            "kind": "date"
+            "k": "date",
+            "n": "expiry_date",
+            "t": "expiry date",
+            "v": null
           }
         ]
       }
-    ]
+    ],
+    "fields": [],
+    "URLs": null
   },
   "wallet.government.SsnUS": {
     "sections": [
@@ -721,18 +870,22 @@
         "title": "",
         "fields": [
           {
-            "name": "name",
-            "title": "name",
-            "kind": "string"
+            "k": "string",
+            "n": "name",
+            "t": "name",
+            "v": null
           },
           {
-            "name": "number",
-            "title": "number",
-            "kind": "concealed"
+            "k": "concealed",
+            "n": "number",
+            "t": "number",
+            "v": null
           }
         ]
       }
-    ]
+    ],
+    "fields": [],
+    "URLs": null
   },
   "wallet.membership.Membership": {
     "sections": [
@@ -741,48 +894,58 @@
         "title": "",
         "fields": [
           {
-            "name": "org_name",
-            "title": "group",
-            "kind": "string"
+            "k": "string",
+            "n": "org_name",
+            "t": "group",
+            "v": null
           },
           {
-            "name": "website",
-            "title": "website",
-            "kind": "URL"
+            "k": "URL",
+            "n": "website",
+            "t": "website",
+            "v": null
           },
           {
-            "name": "phone",
-            "title": "telephone",
-            "kind": "phone"
+            "k": "phone",
+            "n": "phone",
+            "t": "telephone",
+            "v": null
           },
           {
-            "name": "member_name",
-            "title": "member name",
-            "kind": "string"
+            "k": "string",
+            "n": "member_name",
+            "t": "member name",
+            "v": null
           },
           {
-            "name": "member_since",
-            "title": "member since",
-            "kind": "monthYear"
+            "k": "monthYear",
+            "n": "member_since",
+            "t": "member since",
+            "v": null
           },
           {
-            "name": "expiry_date",
-            "title": "expiry date",
-            "kind": "monthYear"
+            "k": "monthYear",
+            "n": "expiry_date",
+            "t": "expiry date",
+            "v": null
           },
           {
-            "name": "membership_no",
-            "title": "member ID",
-            "kind": "string"
+            "k": "string",
+            "n": "membership_no",
+            "t": "member ID",
+            "v": null
           },
           {
-            "name": "pin",
-            "title": "password",
-            "kind": "concealed"
+            "k": "concealed",
+            "n": "pin",
+            "t": "password",
+            "v": null
           }
         ]
       }
-    ]
+    ],
+    "fields": [],
+    "URLs": null
   },
   "wallet.membership.RewardProgram": {
     "sections": [
@@ -791,24 +954,28 @@
         "title": "",
         "fields": [
           {
-            "name": "company_name",
-            "title": "company name",
-            "kind": "string"
+            "k": "string",
+            "n": "company_name",
+            "t": "company name",
+            "v": null
           },
           {
-            "name": "member_name",
-            "title": "member name",
-            "kind": "string"
+            "k": "string",
+            "n": "member_name",
+            "t": "member name",
+            "v": null
           },
           {
-            "name": "membership_no",
-            "title": "member ID",
-            "kind": "string"
+            "k": "string",
+            "n": "membership_no",
+            "t": "member ID",
+            "v": null
           },
           {
-            "name": "pin",
-            "title": "PIN",
-            "kind": "concealed"
+            "k": "concealed",
+            "n": "pin",
+            "t": "PIN",
+            "v": null
           }
         ]
       },
@@ -817,31 +984,63 @@
         "title": "More Information",
         "fields": [
           {
-            "name": "additional_no",
-            "title": "member ID (additional)",
-            "kind": "string"
+            "k": "string",
+            "n": "additional_no",
+            "t": "member ID (additional)",
+            "v": null
           },
           {
-            "name": "member_since",
-            "title": "member since",
-            "kind": "monthYear"
+            "k": "monthYear",
+            "n": "member_since",
+            "t": "member since",
+            "v": null
           },
           {
-            "name": "customer_service_phone",
-            "title": "customer service phone",
-            "kind": "string"
+            "k": "string",
+            "n": "customer_service_phone",
+            "t": "customer service phone",
+            "v": null
           },
           {
-            "name": "reservations_phone",
-            "title": "phone for reservations",
-            "kind": "phone"
+            "k": "phone",
+            "n": "reservations_phone",
+            "t": "phone for reserva​tions",
+            "v": null
           },
           {
-            "name": "website",
-            "title": "website",
-            "kind": "URL"
+            "k": "URL",
+            "n": "website",
+            "t": "website",
+            "v": null
           }
         ]
+      }
+    ],
+    "fields": [],
+    "URLs": null
+  },
+  "webforms.WebForm": {
+    "sections": [],
+    "fields": [
+      {
+        "value": "",
+        "id": "",
+        "name": "username",
+        "type": "T",
+        "designation": "username"
+      },
+      {
+        "value": "",
+        "id": "",
+        "name": "password",
+        "type": "P",
+        "designation": "password"
+      }
+    ],
+    "URLs": [
+      {
+        "label": "website",
+        "url": ""
       }
     ]
   }

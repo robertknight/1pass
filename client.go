@@ -277,6 +277,29 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 		itemContent.Sections = append(itemContent.Sections, section)
 	}
 
+	// read form fields
+	for _, formFieldTemplate := range template.FormFields {
+		field := WebFormField{
+			Name:        formFieldTemplate.Name,
+			Id:          formFieldTemplate.Id,
+			Type:        formFieldTemplate.Type,
+			Designation: formFieldTemplate.Designation,
+		}
+		fmt.Printf("%s (%s): ", field.Name, field.Type)
+		field.Value = readLine()
+		itemContent.FormFields = append(itemContent.FormFields, field)
+	}
+
+	// read URLs
+	for _, urlTemplate := range template.Urls {
+		url := ItemUrl{
+			Label: urlTemplate.Label,
+		}
+		fmt.Printf("%s (URL): ", url.Label)
+		url.Url = readLine()
+		itemContent.Urls = append(itemContent.Urls, url)
+	}
+
 	// save item to vault
 	item, err := vault.AddItem(title, typeName, itemContent)
 	err = item.Save()
@@ -531,7 +554,10 @@ func exportItemTemplates(vault *Vault, pattern string) {
 
 	typeTemplates := map[string]ItemTemplate{}
 	for _, item := range items {
-		typeTemplate := ItemTemplate{Sections: []ItemTemplateSection{}}
+		typeTemplate := ItemTemplate{
+			Sections:   []ItemSection{},
+			FormFields: []WebFormField{},
+		}
 		if !strings.HasPrefix(strings.ToLower(item.Title), pattern) {
 			continue
 		}
@@ -540,14 +566,16 @@ func exportItemTemplates(vault *Vault, pattern string) {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to decrypt item: %v\n", err)
 		}
+
+		// section templates
 		for _, section := range content.Sections {
-			sectionTemplate := ItemTemplateSection{
+			sectionTemplate := ItemSection{
 				Name:   section.Name,
 				Title:  section.Title,
-				Fields: []ItemTemplateField{},
+				Fields: []ItemField{},
 			}
 			for _, field := range section.Fields {
-				fieldTemplate := ItemTemplateField{
+				fieldTemplate := ItemField{
 					Name:  field.Name,
 					Title: field.Title,
 					Kind:  field.Kind,
@@ -556,6 +584,24 @@ func exportItemTemplates(vault *Vault, pattern string) {
 			}
 			typeTemplate.Sections = append(typeTemplate.Sections, sectionTemplate)
 		}
+
+		// web form field templates
+		for _, formField := range content.FormFields {
+			formTemplate := WebFormField{
+				Name:        formField.Name,
+				Id:          formField.Id,
+				Type:        formField.Type,
+				Designation: formField.Designation,
+			}
+			typeTemplate.FormFields = append(typeTemplate.FormFields, formTemplate)
+		}
+
+		// URL templates
+		for _, url := range content.Urls {
+			urlTemplate := ItemUrl{Label: url.Label}
+			typeTemplate.Urls = append(typeTemplate.Urls, urlTemplate)
+		}
+
 		typeTemplates[item.TypeName] = typeTemplate
 	}
 
