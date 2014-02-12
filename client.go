@@ -159,7 +159,7 @@ func listItems(vault *Vault) {
 	}
 
 	sortSlice(items, func(a, b interface{}) bool {
-		return a.(Item).Title < b.(Item).Title
+		return strings.ToLower(a.(Item).Title) < strings.ToLower(b.(Item).Title)
 	})
 
 	for _, item := range items {
