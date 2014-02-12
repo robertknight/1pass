@@ -13,7 +13,8 @@ type ItemType struct {
 	shortAlias string
 }
 
-// base struct for item types
+// Decrypted contents of an item, consisting primarily
+// of a list of sections, each of which has a list of fields
 type ItemContent struct {
 	Sections []ItemSection `json:"sections"`
 	Urls     []ItemUrl     `json:"URLs"`
@@ -26,15 +27,21 @@ type ItemContent struct {
 	HtmlAction string         `json:"htmlAction"`
 }
 
+// Section of an item's contents
 type ItemSection struct {
-	Name   string      `json:"name"`
+	// Internal name of the section
+	Name string `json:"name"`
+	// User-visible title for the section
 	Title  string      `json:"title"`
 	Fields []ItemField `json:"fields"`
 }
 
 type ItemField struct {
-	Kind  string      `json:"k"`
-	Name  string      `json:"n"`
+	// Content-type for the field
+	Kind string `json:"k"`
+	// Internal name of the field
+	Name string `json:"n"`
+	// User-visible title of the field
 	Title string      `json:"t"`
 	Value interface{} `json:"v"`
 }
@@ -44,23 +51,58 @@ func (field ItemField) ValueString() string {
 		return ""
 	}
 
+	defaultStr := fmt.Sprintf("%s", field.Value)
+
 	switch field.Kind {
 	case "address":
-		addr := AddressFromMap(field.Value.(map[string]interface{}))
+		valueMap, ok := field.Value.(map[string]interface{})
+		if !ok {
+			return defaultStr
+		}
+		addr := AddressFromMap(valueMap)
 		return fmt.Sprintf("Street: %s, City: %s, Zip: %s, State: %s, Country:%s",
 			addr.Street, addr.City, addr.Zip, addr.State, addr.Country)
 	case "date":
-		return time.Unix(int64(field.Value.(float64)), 0).Format("02/01/06")
+		valueFloat, ok := field.Value.(float64)
+		if !ok {
+			return defaultStr
+		}
+		return time.Unix(int64(valueFloat), 0).Format("02/01/06")
 	case "monthYear":
 		// stored as an int with digits YYYYMM
-		value := int(field.Value.(float64))
+		valueFloat, ok := field.Value.(float64)
+		if !ok {
+			return defaultStr
+		}
+		value := int(valueFloat)
 		month := value % 100
 		year := value / 100
 		return fmt.Sprintf("%02.d/%04.d", month, year)
 	case "string", "URL", "cctype", "phone", "gender", "email", "menu":
-		return fmt.Sprintf("%s", field.Value)
+		return defaultStr
 	default:
 		return fmt.Sprintf("(%s) %s", field.Kind, field.Value)
+	}
+}
+
+func FieldValueFromString(kind string, str string) (interface{}, error) {
+	switch kind {
+	case "date":
+		// TODO - Use locale-appropriate date format
+		date, err := time.Parse("02/01/06", str)
+		if err != nil {
+			return nil, fmt.Errorf("%s is not in the format DD/MM/YY", str)
+		}
+		return date.Unix(), nil
+	case "monthYear":
+		date, err := time.Parse("01/06", str)
+		if err != nil {
+			return nil, fmt.Errorf("%s is not in the format MM/YY", str)
+		}
+		// convert to int with digits YYYYMM
+		return date.Year()*100 + int(date.Month()), nil
+	default:
+		return str, nil
 	}
 }
 
@@ -184,12 +226,51 @@ var ItemTypes = map[string]ItemType{
 	},
 }
 
-func indentStr(n int) string {
-	indent := ""
-	for i := 0; i < n; i++ {
-		indent = indent + " "
-	}
-	return indent
+const (
+	StringField = iota
+	EmailField
+	URLField
+	DateField
+	MonthYearField
+	AddressField
+	CctypeField
+	PhoneField
+	GenderField
+	MenuField
+	ConcealedField
+)
+
+type FieldType int
+
+var FieldKindMap = map[string]FieldType{
+	"string":    StringField,
+	"email":     EmailField,
+	"URL":       URLField,
+	"date":      DateField,
+	"monthYear": MonthYearField,
+	"address":   AddressField,
+	"cctype":    CctypeField,
+	"phone":     PhoneField,
+	"gender":    GenderField,
+	"menu":      MenuField,
+	"concealed": ConcealedField,
+}
+
+// template for a new item
+type ItemTemplate struct {
+	Sections []ItemTemplateSection `json:"sections"`
+}
+
+type ItemTemplateSection struct {
+	Name   string              `json:"name"`
+	Title  string              `json:"title"`
+	Fields []ItemTemplateField `json:"fields"`
+}
+
+type ItemTemplateField struct {
+	Name  string `json:"name"`
+	Title string `json:"title"`
+	Kind  string `json:"kind"`
 }
 
 func (item ItemContent) String() string {

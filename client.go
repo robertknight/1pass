@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 
@@ -19,6 +20,8 @@ type commandMode struct {
 	command     string
 	description string
 	argNames    []string
+	extraHelp   func() string
+	internal    bool
 }
 
 var commandModes = []commandMode{
@@ -58,6 +61,7 @@ var commandModes = []commandMode{
 		command:     "add",
 		description: "Add a new item to the vault",
 		argNames:    []string{"type", "title"},
+		extraHelp:   addItemHelp,
 	},
 	{
 		command:     "remove",
@@ -77,6 +81,12 @@ var commandModes = []commandMode{
 		command:     "help",
 		description: "Display usage information",
 	},
+	{
+		command:     "export-item-templates",
+		description: "Create item templates from items matching the given pattern",
+		argNames:    []string{"pattern"},
+		internal:    true,
+	},
 }
 
 type clientConfig struct {
@@ -84,6 +94,13 @@ type clientConfig struct {
 }
 
 var configPath = os.Getenv("HOME") + "/.1pass"
+
+// reads a line of input from stdin
+func readLine() string {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	return scanner.Text()
+}
 
 func readConfig() clientConfig {
 	var config clientConfig
@@ -198,9 +215,7 @@ func readFields(names []string, args ...*string) error {
 			value = string(passBytes)
 			fmt.Println()
 		} else {
-			scanner := bufio.NewScanner(os.Stdin)
-			scanner.Scan()
-			value = scanner.Text()
+			value = readLine()
 		}
 		*args[i] = value
 	}
@@ -220,29 +235,71 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 		return fmt.Errorf("Unknown item type '%s'", shortTypeName)
 	}
 
-	var location string
-	var username string
-	var pass string
-	var domain string
-	err := readFields([]string{"Username", "Password", "Domain"}, &username, &pass, &domain)
+	// load item templates
+	templates := map[string]ItemTemplate{}
+	err := readJsonFile("item-templates.js", &templates)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to read item templates: %v", err)
 	}
-	itemContent.FormFields = []WebFormField{
-		WebFormField{Name: "username", Value: username, Type: "T", Designation: "username"},
-		WebFormField{Name: "password", Value: pass, Type: "P", Designation: "password"},
+
+	template, ok := templates[typeName]
+	if !ok {
+		return fmt.Errorf("No template for item type '%s'", shortTypeName)
 	}
-	itemContent.Urls = []ItemUrl{
-		ItemUrl{Label: "website", Url: domain},
+
+	// read sections
+	for _, sectionTemplate := range template.Sections {
+		section := ItemSection{
+			Name:   sectionTemplate.Name,
+			Title:  sectionTemplate.Title,
+			Fields: []ItemField{},
+		}
+		for _, fieldTemplate := range sectionTemplate.Fields {
+			field := ItemField{
+				Name:  fieldTemplate.Name,
+				Title: fieldTemplate.Title,
+				Kind:  fieldTemplate.Kind,
+			}
+
+			for field.Value == nil {
+				fmt.Printf("%s (%s): ", field.Title, field.Kind)
+				valueStr := readLine()
+				if len(valueStr) == 0 {
+					break
+				}
+				field.Value, err = FieldValueFromString(field.Kind, valueStr)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "%s\n", err)
+				}
+			}
+			section.Fields = append(section.Fields, field)
+		}
+		itemContent.Sections = append(itemContent.Sections, section)
 	}
-	location = domain
+
+	// save item to vault
 	item, err := vault.AddItem(title, typeName, itemContent)
-	item.Location = location
 	err = item.Save()
-	if err != nil {
-		return err
-	}
 	return err
+}
+
+func addItemHelp() string {
+	typeAliases := map[string]ItemType{}
+	sortedAliases := []string{}
+	for _, itemType := range ItemTypes {
+		typeAliases[itemType.shortAlias] = itemType
+		sortedAliases = append(sortedAliases, itemType.shortAlias)
+	}
+	sort.Strings(sortedAliases)
+
+	result := "Item Types:\n\n"
+	for i, alias := range sortedAliases {
+		if i > 0 {
+			result += "\n"
+		}
+		result = result + fmt.Sprintf("  %s - %s", alias, typeAliases[alias].name)
+	}
+	return result
 }
 
 func lookupItems(vault *Vault, pattern string) ([]Item, error) {
@@ -264,9 +321,10 @@ func lookupItems(vault *Vault, pattern string) ([]Item, error) {
 
 func parseCmdArgs(cmdName string, cmdArgs []string, out ...*string) error {
 	requiredArgs := 0
-	argNames := []string{}
+	var argNames []string
 	for _, mode := range commandModes {
 		if mode.command == cmdName {
+			argNames = mode.argNames
 			for _, argName := range mode.argNames {
 				if !strings.HasPrefix(argName, "[") {
 					requiredArgs++
@@ -286,13 +344,7 @@ func parseCmdArgs(cmdName string, cmdArgs []string, out ...*string) error {
 	return nil
 }
 
-func positionalArgs(args []string, names []string) ([]string, error) {
-	if len(args) < len(names) {
-		return nil, fmt.Errorf("Missing arguments: %s", strings.Join(names[len(args):], ", "))
-	}
-	return args, nil
-}
-
+// read a response to a yes/no question from stdin
 func readConfirmation() bool {
 	var response string
 	count, err := fmt.Scanln(&response)
@@ -301,12 +353,11 @@ func readConfirmation() bool {
 
 func checkErr(err error, context string) {
 	if err != nil {
-		var format string
-		if context != "" {
-			format = "%s: "
+		if context == "" {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+		} else {
+			fmt.Fprintf(os.Stderr, "%s: %v\n", err)
 		}
-		format = format + "%v\n"
-		fmt.Fprintf(os.Stderr, "%s: %v\n", context, err)
 		os.Exit(1)
 	}
 }
@@ -346,6 +397,9 @@ func printHelp(cmd string) {
 			return a.(commandMode).command < b.(commandMode).command
 		})
 		for _, cmd := range sortedCommands {
+			if cmd.internal {
+				continue
+			}
 			padding := maxCmdLen - len(cmd.command) + 2
 			fmt.Fprintf(os.Stderr, "  %s%*.s%s\n", cmd.command, padding, "", cmd.description)
 		}
@@ -354,6 +408,8 @@ func printHelp(cmd string) {
 		found := false
 		for _, mode := range commandModes {
 			if mode.command == cmd {
+				found = true
+
 				syntax := fmt.Sprintf("%s %s", os.Args[0], mode.command)
 				for _, arg := range mode.argNames {
 					if strings.HasPrefix(arg, "[") {
@@ -365,7 +421,10 @@ func printHelp(cmd string) {
 					}
 				}
 				fmt.Printf("%s\n\n%s\n\n", syntax, mode.description)
-				found = true
+
+				if mode.extraHelp != nil {
+					fmt.Printf("%s\n\n", mode.extraHelp())
+				}
 			}
 		}
 		if !found {
@@ -459,6 +518,53 @@ func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 	}
 
 	fmt.Printf("Copied '%s' to clipboard for item '%s'\n", fieldTitle, items[0].Title)
+}
+
+// create a set of item templates based on existing
+// items in a vault
+func exportItemTemplates(vault *Vault, pattern string) {
+	items, err := vault.ListItems()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to list vault items: %v\n", err)
+		os.Exit(1)
+	}
+
+	typeTemplates := map[string]ItemTemplate{}
+	for _, item := range items {
+		typeTemplate := ItemTemplate{Sections: []ItemTemplateSection{}}
+		if !strings.HasPrefix(strings.ToLower(item.Title), pattern) {
+			continue
+		}
+
+		content, err := item.Content()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to decrypt item: %v\n", err)
+		}
+		for _, section := range content.Sections {
+			sectionTemplate := ItemTemplateSection{
+				Name:   section.Name,
+				Title:  section.Title,
+				Fields: []ItemTemplateField{},
+			}
+			for _, field := range section.Fields {
+				fieldTemplate := ItemTemplateField{
+					Name:  field.Name,
+					Title: field.Title,
+					Kind:  field.Kind,
+				}
+				sectionTemplate.Fields = append(sectionTemplate.Fields, fieldTemplate)
+			}
+			typeTemplate.Sections = append(typeTemplate.Sections, sectionTemplate)
+		}
+		typeTemplates[item.TypeName] = typeTemplate
+	}
+
+	data, err := json.Marshal(typeTemplates)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error dumping item templates: %v\n", err)
+		os.Exit(1)
+	}
+	_, _ = os.Stdout.Write(prettyJson(data))
 }
 
 func main() {
@@ -601,6 +707,12 @@ to specify an existing vault or '%s new <path>' to create a new one
 
 	case "set-password":
 		changeMasterPassword(&vault, string(masterPwd))
+
+	case "export-item-templates":
+		var pattern string
+		err = parseCmdArgs(mode, cmdArgs, &pattern)
+		checkErr(err, "")
+		exportItemTemplates(&vault, pattern)
 
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", mode)

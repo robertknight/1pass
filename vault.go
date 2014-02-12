@@ -21,13 +21,6 @@ import (
 	uuid "github.com/nu7hatch/gouuid"
 )
 
-const (
-	UsernameField = 1
-	PasswordField = 2
-)
-
-type FieldType int
-
 const Aes128KeyLen = 16
 const AesBlockLen = 16
 
@@ -476,29 +469,6 @@ func (item *Item) Decrypt() (string, error) {
 		return "", fmt.Errorf("Failed to decrypt item: %v", err)
 	}
 	return string(decryptedData), nil
-}
-
-func (item *Item) Field(kind FieldType) (string, error) {
-
-	itemData, err := item.Content()
-	if err != nil {
-		return "", err
-	}
-
-	var designation string
-
-	switch kind {
-	case PasswordField:
-		designation = "password"
-	case UsernameField:
-		designation = "username"
-	}
-	for _, field := range itemData.FormFields {
-		if field.Designation == designation {
-			return field.Value, nil
-		}
-	}
-	return "", errors.New("No matching field found")
 }
 
 // returns a pointer to a struct containing the item's
