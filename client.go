@@ -276,8 +276,13 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 			}
 
 			for field.Value == nil {
-				fmt.Printf("%s (%s): ", field.Title, field.Kind)
-				valueStr := readLine()
+				var valueStr string
+				if field.Kind == "concealed" {
+					valueStr, _ = readNewPassword(field.Title)
+				} else {
+					fmt.Printf("%s (%s): ", field.Title, field.Kind)
+					valueStr = readLine()
+				}
 				if len(valueStr) == 0 {
 					break
 				}
@@ -299,8 +304,17 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 			Type:        formFieldTemplate.Type,
 			Designation: formFieldTemplate.Designation,
 		}
-		fmt.Printf("%s (%s): ", field.Name, field.Type)
-		field.Value = readLine()
+		if field.Type == "P" {
+			for {
+				field.Value, err = readNewPassword(field.Name)
+				if err == nil {
+					break
+				}
+			}
+		} else {
+			fmt.Printf("%s (%s): ", field.Name, field.Type)
+			field.Value = readLine()
+		}
 		itemContent.FormFields = append(itemContent.FormFields, field)
 	}
 
@@ -397,6 +411,23 @@ func checkErr(err error, context string) {
 		}
 		os.Exit(1)
 	}
+}
+
+func readNewPassword(passType string) (string, error) {
+	fmt.Printf("%s (or '-' for a random new %s): ", passType, passType)
+	pwd, _ := terminal.ReadPassword(0)
+	if string(pwd) == "-" {
+		pwd = []byte(genDefaultPassword())
+		fmt.Printf("(Random new password generated)")
+	} else {
+		fmt.Printf("\nRe-enter %s: ", passType)
+		pwd2, _ := terminal.ReadPassword(0)
+		if string(pwd) != string(pwd2) {
+			return "", fmt.Errorf("Passwords do not match")
+		}
+	}
+	fmt.Println()
+	return string(pwd), nil
 }
 
 func createNewVault(path string) {
