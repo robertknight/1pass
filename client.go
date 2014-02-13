@@ -441,7 +441,7 @@ func printHelp(cmd string) {
 			padding := maxCmdLen - len(cmd.command) + 2
 			fmt.Fprintf(os.Stderr, "  %s%*.s%s\n", cmd.command, padding, "", cmd.description)
 		}
-		fmt.Printf("\n")
+		fmt.Printf("\nUse '%s help <command>' for more information about using a given command.\n\n", os.Args[0])
 	} else {
 		found := false
 		for _, mode := range commandModes {
