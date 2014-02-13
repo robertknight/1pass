@@ -46,6 +46,7 @@ var commandModes = []commandMode{
 	{
 		command:     "list",
 		description: "List items in the vault",
+		argNames:    []string{"[pattern]"},
 	},
 	{
 		command:     "show-json",
@@ -156,8 +157,16 @@ func findKeyChainDirs() []string {
 	return paths
 }
 
-func listItems(vault *Vault) {
-	items, err := vault.ListItems()
+func listItems(vault *Vault, pattern string) {
+	var items []Item
+	var err error
+
+	if len(pattern) > 0 {
+		items, err = lookupItems(vault, pattern)
+	} else {
+		items, err = vault.ListItems()
+	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to list vault items: %v\n", err)
 		os.Exit(1)
@@ -727,7 +736,9 @@ to specify an existing vault or '%s new <path>' to create a new one
 
 	switch mode {
 	case "list":
-		listItems(&vault)
+		var pattern string
+		parseCmdArgs(mode, cmdArgs, &pattern)
+		listItems(&vault, pattern)
 	case "show-json":
 		fallthrough
 	case "show":
