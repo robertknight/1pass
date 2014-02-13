@@ -69,6 +69,11 @@ var commandModes = []commandMode{
 		argNames:    []string{"pattern"},
 	},
 	{
+		command:     "rename",
+		description: "Renames an item in the vault",
+		argNames:    []string{"pattern", "new-title"},
+	},
+	{
 		command:     "copy",
 		description: "Copy information from the given item to the clipboard",
 		argNames:    []string{"pattern", "field"},
@@ -488,13 +493,12 @@ func removeItems(vault *Vault, pattern string) {
 	}
 }
 
-func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
+func lookupSingleItem(vault *Vault, pattern string) (Item, error) {
 	items, err := lookupItems(vault, pattern)
 	checkErr(err, "Unable to lookup items")
 
 	if len(items) == 0 {
-		fmt.Fprintf(os.Stderr, "No matching items")
-		os.Exit(1)
+		return Item{}, fmt.Errorf("No matching items")
 	}
 
 	if len(items) > 1 {
@@ -502,12 +506,33 @@ func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 		for _, item := range items {
 			fmt.Fprintf(os.Stderr, "  %s (%s)\n", item.Title, item.Uuid)
 		}
+		return Item{}, fmt.Errorf("Multiple matching items")
+	}
+
+	return items[0], nil
+}
+
+func renameItem(vault *Vault, pattern string, newTitle string) {
+	item, err := lookupSingleItem(vault, pattern)
+	if err != nil {
+		os.Exit(1)
+	}
+	item.Title = newTitle
+	err = item.Save()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to change item title to '%s': %v\n", newTitle)
+	}
+}
+
+func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
+	item, err := lookupSingleItem(vault, pattern)
+	if err != nil {
 		os.Exit(1)
 	}
 
-	content, err := items[0].Content()
+	content, err := item.Content()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to decrypt item '%s': %v\n", items[0].Title, err)
+		fmt.Fprintf(os.Stderr, "Failed to decrypt item '%s': %v\n", item.Title, err)
 		os.Exit(1)
 	}
 
@@ -540,7 +565,7 @@ func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 		fmt.Fprintf(os.Stderr, "Failed to copy '%s' field to clipboard: %v\n", field, err)
 	}
 
-	fmt.Printf("Copied '%s' to clipboard for item '%s'\n", fieldTitle, items[0].Title)
+	fmt.Printf("Copied '%s' to clipboard for item '%s'\n", fieldTitle, item.Title)
 }
 
 // create a set of item templates based on existing
@@ -743,6 +768,13 @@ to specify an existing vault or '%s new <path>' to create a new one
 		err = parseCmdArgs(mode, cmdArgs, &pattern)
 		checkErr(err, "")
 		removeItems(&vault, pattern)
+
+	case "rename":
+		var pattern string
+		var newTitle string
+		err = parseCmdArgs(mode, cmdArgs, &pattern, &newTitle)
+		checkErr(err, "")
+		renameItem(&vault, pattern, newTitle)
 
 	case "copy":
 		var pattern string
