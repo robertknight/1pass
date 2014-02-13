@@ -420,6 +420,7 @@ func createNewVault(path string) {
 func printHelp(cmd string) {
 	if len(cmd) == 0 {
 		fmt.Fprintf(os.Stderr, "Usage: %s <command> <args>\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "%s is a tool for managing 1Password vaults.\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Supported commands:\n\n")
 
 		maxCmdLen := 0
