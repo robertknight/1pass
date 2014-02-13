@@ -27,6 +27,7 @@ const AesBlockLen = 16
 
 var PbkdfIterations = 17094
 
+// Represents a 1Password vault
 type Vault struct {
 	Path string
 
@@ -37,7 +38,7 @@ type Vault struct {
 
 type DecryptError error
 
-// struct for items in <UUID>.1password files
+// Represents a single encrypted item in a 1Password vault
 type Item struct {
 	// UNIX timestamp specifying last modification
 	// time for item
@@ -113,6 +114,8 @@ func newItemId() string {
 	return strings.ToUpper(hex.EncodeToString(id[:]))
 }
 
+// Checks that vaultPath exists and is a supported
+// 1Password vault format
 func CheckVault(vaultPath string) error {
 	_, err := os.Stat(vaultPath)
 	if err != nil {
@@ -132,11 +135,13 @@ func CheckVault(vaultPath string) error {
 	return nil
 }
 
-// specifies the security settings for a new
+// Specifies the security settings for a new
 // vault
 type VaultSecurity struct {
+	// The master password used to encrypt the main
+	// encryption keys for the vault
 	MasterPwd string
-	// number of iterations of the PBKDF2 function to
+	// Number of iterations of the PBKDF2 function to
 	// apply to the master password. More iterations
 	// will slow down password cracking but also slow
 	// down unlocking the vault
@@ -243,6 +248,10 @@ func (vault *Vault) IsLocked() bool {
 	return vault.keys == nil
 }
 
+// Discards encryption keys stored in memory
+// after a call to Unlock(). After calling Lock()
+// item content can only be retrieved once
+// Unlock() has been used again
 func (vault *Vault) Lock() {
 	vault.keys = nil
 }
@@ -297,7 +306,9 @@ func (vault *Vault) SetMasterPassword(currentPwd string, newPwd string) error {
 	return nil
 }
 
-func (vault *Vault) AddItem(title string, itemType string, content interface{}) (Item, error) {
+// Save a new item to the vault. The new item is given a randomly
+// generated ID.
+func (vault *Vault) AddItem(title string, itemType string, content ItemContent) (Item, error) {
 	item := Item{
 		Title:         title,
 		SecurityLevel: "SL5",
@@ -319,6 +330,7 @@ func (vault *Vault) AddItem(title string, itemType string, content interface{}) 
 	return item, nil
 }
 
+// Remove the item from the vault
 func (item *Item) Remove() error {
 	itemDataFile := item.Path()
 
@@ -387,10 +399,16 @@ func readContentsEntry(entry []interface{}) Item {
 	}
 }
 
+// Returns the path of the file containing
+// this item.
 func (item *Item) Path() string {
 	return item.vault.Path + "/" + item.Uuid + ".1password"
 }
 
+// Save item to the vault. The item's UpdatedAt
+// timestamp is updated to the current time and
+// CreatedAt is also set to the current time if
+// it was not previously set.
 func (item *Item) Save() error {
 	if len(item.Encrypted) == 0 {
 		return fmt.Errorf("Item content not set")
@@ -446,6 +464,8 @@ func (vault *Vault) LoadItem(uuid string) (Item, error) {
 	return item, nil
 }
 
+// Returns a list of all items in the vault.
+// Returned items have their main content still encrypted
 func (vault *Vault) ListItems() ([]Item, error) {
 	items := []Item{}
 	dirEntries, err := ioutil.ReadDir(vault.Path)
@@ -466,9 +486,9 @@ func (vault *Vault) ListItems() ([]Item, error) {
 	return items, nil
 }
 
-// returns the raw decrypted contents of the item
+// Decrypts the item's content and returns it
 // as a JSON string
-func (item *Item) Decrypt() (string, error) {
+func (item *Item) ContentJson() (string, error) {
 	if item.vault.IsLocked() {
 		return "", errors.New("Vault is locked")
 	}
@@ -488,13 +508,9 @@ func (item *Item) Decrypt() (string, error) {
 	return string(decryptedData), nil
 }
 
-// returns a pointer to a struct containing the item's
-// decrypted content
-//
-// The type of struct depends on the item's TypeName.
-// See itemdata.go
+// Decrypts and returns the content of the item
 func (item *Item) Content() (ItemContent, error) {
-	content, err := item.Decrypt()
+	content, err := item.ContentJson()
 	if err != nil {
 		return ItemContent{}, err
 	}
@@ -513,7 +529,9 @@ func (item *Item) Content() (ItemContent, error) {
 	return fieldValue, nil
 }
 
-func (item *Item) SetContent(data interface{}) error {
+// Encrypts data using the item's encryption key
+// and stores it in item.Encrypted
+func (item *Item) SetContent(data ItemContent) error {
 	json, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -521,6 +539,8 @@ func (item *Item) SetContent(data interface{}) error {
 	return item.SetContentJson(string(json))
 }
 
+// Encrypts content using the item's encryption key
+// and stores it in item.Encrypted
 func (item *Item) SetContentJson(content string) error {
 	var unused interface{}
 	err := json.Unmarshal([]byte(content), &unused)
@@ -545,6 +565,8 @@ func (item *Item) SetContentJson(content string) error {
 	return nil
 }
 
+// Returns the user-presentable description
+// of the item's type (eg. "Credit Card")
 func (item *Item) Type() string {
 	itemType, ok := ItemTypes[item.TypeName]
 	if ok {
@@ -762,7 +784,7 @@ func genPasswordCandidate(length int) string {
 	return output
 }
 
-// generate a password suitable for use on most input forms
+// Generate a password suitable for use on most input forms.
 // Generated passwords will contain length chars at at least
 // one upper case letter, one lower case letter and one digit
 func GenPassword(length int) string {

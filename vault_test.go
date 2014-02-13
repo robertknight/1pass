@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 	"unicode"
@@ -23,6 +23,14 @@ func newTestItem(vault *Vault) Item {
 		vault:         vault,
 	}
 	return item
+}
+
+func newTestContent(url string) ItemContent {
+	return ItemContent{
+		Urls: []ItemUrl{
+			{Label: "site", Url: url},
+		},
+	}
 }
 
 func newTestVault() (Vault, error) {
@@ -51,16 +59,16 @@ func TestItemCrypt(t *testing.T) {
 		t.Fatalf("Creating test vault failed: %v", err)
 	}
 	item := newTestItem(&vault)
-	content := fmt.Sprintf("{\"data\" : \"%s\"}", alphabet)
-	err = item.SetContentJson(content)
+	content := newTestContent("crypt.com")
+	err = item.SetContent(content)
 	if err != nil {
 		t.Error(err)
 	}
-	decrypted, err := item.Decrypt()
+	decrypted, err := item.Content()
 	if err != nil {
 		t.Error("error decrypting item: %v", err)
 	}
-	if decrypted != content {
+	if !reflect.DeepEqual(decrypted, content) {
 		t.Errorf("input: %s, decrypted: %s", content, decrypted)
 	}
 }
@@ -72,8 +80,8 @@ func TestSaveLoadRemoveItem(t *testing.T) {
 		t.Fatalf("Creating test vault failed: %v", err)
 	}
 	item := newTestItem(&vault)
-	content := fmt.Sprintf("{\"data\" : \"%s\"}", "TestSaveLoadItem")
-	err = item.SetContentJson(content)
+	content := newTestContent("oldsite.com")
+	err = item.SetContent(content)
 	if err != nil {
 		t.Error(err)
 	}
@@ -104,9 +112,9 @@ func TestSaveLoadRemoveItem(t *testing.T) {
 	}
 
 	// update the saved item
-	newContent := "[true]"
+	newContent := newTestContent("newsite.com")
 	item.Title = "New Title"
-	item.SetContentJson(newContent)
+	item.SetContent(newContent)
 	item.Save()
 
 	loadedItem, err = item.vault.LoadItem(item.Uuid)
@@ -117,11 +125,11 @@ func TestSaveLoadRemoveItem(t *testing.T) {
 	if loadedItem.Title != item.Title {
 		t.Errorf("Failed to update title")
 	}
-	content, err = loadedItem.Decrypt()
+	content, err = loadedItem.Content()
 	if err != nil {
 		t.Errorf("Failed to decrypt updated item: %v", err)
 	}
-	if content != newContent {
+	if !reflect.DeepEqual(content, newContent) {
 		t.Errorf("Failed to update item content. Actual: %s, expected: %s", content, newContent)
 	}
 

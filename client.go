@@ -209,7 +209,7 @@ func displayItem(item Item) {
 
 func displayItemJson(item Item) {
 	fmt.Printf("%s: %s: %s\n", item.Title, item.Uuid, item.ContentsHash)
-	decrypted, err := item.Decrypt()
+	decrypted, err := item.ContentJson()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to decrypt item: %s: %v", item.Title, err)
 		return
