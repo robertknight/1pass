@@ -15,6 +15,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 	"unicode"
 
 	"code.google.com/p/go.crypto/pbkdf2"
@@ -393,6 +394,11 @@ func (item *Item) Path() string {
 func (item *Item) Save() error {
 	if len(item.Encrypted) == 0 {
 		return fmt.Errorf("Item content not set")
+	}
+
+	item.UpdatedAt = uint64(time.Now().Unix())
+	if item.CreatedAt == 0 {
+		item.CreatedAt = item.UpdatedAt
 	}
 
 	// save item to .1password file

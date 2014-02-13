@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 	"unicode"
 
 	uuid "github.com/nu7hatch/gouuid"
@@ -76,6 +77,8 @@ func TestSaveLoadRemoveItem(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+	saveTime := uint64(time.Now().Unix())
 	err = item.Save()
 	if err != nil {
 		t.Errorf("failed to save item: %v", err)
@@ -92,6 +95,12 @@ func TestSaveLoadRemoveItem(t *testing.T) {
 	}
 	if loadedItem.Title != item.Title {
 		t.Errorf("item mismatch: %v, %v", loadedItem, item)
+	}
+	if loadedItem.CreatedAt < saveTime {
+		t.Errorf("created time not set: %v", loadedItem.CreatedAt)
+	}
+	if loadedItem.UpdatedAt < saveTime {
+		t.Errorf("updated time not set: %v", loadedItem.UpdatedAt)
 	}
 
 	// update the saved item
