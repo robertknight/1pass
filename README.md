@@ -23,32 +23,25 @@ The client looks for your 1Password vault in `~/Dropbox/1Password/1Password.agil
 tries to find a directory called `1Password.agilekeychain` using `locate`. If your vault cannot be found automatically,
 you can use the `set-vault` command to tell the client where to find it.
 
-### Supported Commands:
+Use `1pass help` to display the list of supported commands and `1pass help <command>`
+to display the syntax for a given command.
 
-**help** - Display the list of supported commands
+The item(s) which a command applies to are specified with a pattern which is matched against
+the title and ID of the item. For example:
 
-**new** _path_ - Create a new 1Password vault in _path_
+`1pass show _git_`
 
-**list** - List titles of all items in the vault
- 
-**show** _pattern_ - Show basic information and contents of items matching _pattern_
+Will show all entries whose title contains 'git', eg. 'GitHub.com'
 
-**show-json** _pattern_ - Show the raw decrypted contents of items matching _pattern_
- 
-**add** _type_ _title_ - Add a new item to the vault with the given type and title.
+## Common Commands
 
-**remove** _pattern_ - Remove items from the vault matching _pattern_
- 
-**copy** _pattern_ _field-pattern_ - Copy the contents of a field from the item matching _pattern_ to the clipboard.
-_field-pattern_ can be a pattern matching the title of a field, web form field or website label.
+*list* _pattern_ - List items in the vault
 
-**set-password** - Change the master password for the vault
+*show* _pattern_ - Show the contents of an item
 
-**gen-password** - Generate a readable random password containing a mix of upper and lower-case letters and digits
+*copy* _pattern_ _field_ - Copy the value of a field from an item to the clipboard
 
-**set-vault** _[path]_ - Sets the path to the 1Password vault to use. If _path_ is not specified, attempts to find a vault in a default location.
-
-**info** - Displays information about the current vault
+*add* _type_ _title_ - Add a new item
 
 ## Note on Vault Formats
 
