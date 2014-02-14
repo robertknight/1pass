@@ -107,20 +107,26 @@ func FieldValueFromString(kind string, str string) (interface{}, error) {
 }
 
 type ItemAddress struct {
-	Street  string
-	Country string
-	City    string
-	Zip     string
-	State   string
+	Street  string `json:"street"`
+	Country string `json:"country"`
+	City    string `json:"city"`
+	Zip     string `json:"zip"`
+	State   string `json:"state"`
 }
 
 func AddressFromMap(m map[string]interface{}) ItemAddress {
+	street, _ := m["street"].(string)
+	city, _ := m["city"].(string)
+	country, _ := m["country"].(string)
+	zip, _ := m["zip"].(string)
+	state, _ := m["state"].(string)
+
 	return ItemAddress{
-		Street:  m["street"].(string),
-		City:    m["city"].(string),
-		Country: m["country"].(string),
-		Zip:     m["zip"].(string),
-		State:   m["state"].(string),
+		Street:  street,
+		City:    city,
+		Country: country,
+		Zip:     zip,
+		State:   state,
 	}
 }
 

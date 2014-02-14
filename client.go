@@ -111,6 +111,12 @@ type clientConfig struct {
 
 var configPath = os.Getenv("HOME") + "/.1pass"
 
+// displays a prompt and reads a line of input
+func readLinePrompt(prompt string) string {
+	fmt.Printf("%s: ", prompt)
+	return readLine()
+}
+
 // reads a line of input from stdin
 func readLine() string {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -227,25 +233,6 @@ func displayItemJson(item Item) {
 	fmt.Println(string(prettyJson([]byte(decrypted))))
 }
 
-func readFields(names []string, args ...*string) error {
-	if len(names) != len(args) {
-		return fmt.Errorf("name/arg count mismatch")
-	}
-	for i, name := range names {
-		fmt.Printf("%s: ", name)
-		var value string
-		if strings.ToLower(name) == "password" {
-			passBytes, _ := terminal.ReadPassword(0)
-			value = string(passBytes)
-			fmt.Println()
-		} else {
-			value = readLine()
-		}
-		*args[i] = value
-	}
-	return nil
-}
-
 func addItem(vault *Vault, title string, shortTypeName string) error {
 	itemContent := ItemContent{}
 	var typeName string
@@ -289,6 +276,14 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 				var valueStr string
 				if field.Kind == "concealed" {
 					valueStr, _ = readNewPassword(field.Title)
+				} else if field.Kind == "address" {
+					field.Value = ItemAddress{
+						Street:  readLinePrompt("Street"),
+						City:    readLinePrompt("City"),
+						Zip:     readLinePrompt("Zip"),
+						State:   readLinePrompt("State"),
+						Country: readLinePrompt("Country"),
+					}
 				} else {
 					fmt.Printf("%s (%s): ", field.Title, field.Kind)
 					valueStr = readLine()
@@ -296,9 +291,11 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 				if len(valueStr) == 0 {
 					break
 				}
-				field.Value, err = FieldValueFromString(field.Kind, valueStr)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "%s\n", err)
+				if field.Value == nil {
+					field.Value, err = FieldValueFromString(field.Kind, valueStr)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "%s\n", err)
+					}
 				}
 			}
 			section.Fields = append(section.Fields, field)
