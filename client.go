@@ -80,6 +80,16 @@ var commandModes = []commandMode{
 		argNames:    []string{"pattern", "field"},
 	},
 	{
+		command:     "export",
+		description: "Export an item to a JSON file",
+		argNames:    []string{"pattern", "path"},
+	},
+	{
+		command:     "import",
+		description: "Import an item from a JSON file",
+		argNames:    []string{"path"},
+	},
+	{
 		command:     "set-password",
 		description: "Change the master password for the vault",
 	},
@@ -679,6 +689,47 @@ func exportItemTemplates(vault *Vault, pattern string) {
 	_, _ = os.Stdout.Write(prettyJson(data))
 }
 
+type ExportedItem struct {
+	Title   string      `json:"title"`
+	Type    string      `json:"type"`
+	Content ItemContent `json:"content"`
+}
+
+func exportItem(vault *Vault, pattern string, path string) {
+	item, err := lookupSingleItem(vault, pattern)
+	if err != nil {
+		os.Exit(1)
+	}
+	content, err := item.Content()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to read item content: %v\n", err)
+	}
+	exportedItem := ExportedItem{
+		Title:   item.Title,
+		Type:    item.TypeName,
+		Content: content,
+	}
+	err = writePrettyJsonFile(path, exportedItem)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to save item to '%s': %v\n", path, err)
+	}
+}
+
+func importItem(vault *Vault, path string) {
+	var exportedItem ExportedItem
+	err := readJsonFile(path, &exportedItem)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to import item: %v\n", err)
+		os.Exit(1)
+	}
+	item, err := vault.AddItem(exportedItem.Title, exportedItem.Type, exportedItem.Content)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to import item: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Imported item '%s' (%s)\n", item.Title, item.Uuid)
+}
+
 func main() {
 	flag.Usage = func() {
 		printHelp("")
@@ -825,6 +876,19 @@ to specify an existing vault or '%s new <path>' to create a new one
 		err = parseCmdArgs(mode, cmdArgs, &pattern, &field)
 		checkErr(err, "")
 		copyToClipboard(&vault, pattern, field)
+
+	case "import":
+		var path string
+		err = parseCmdArgs(mode, cmdArgs, &path)
+		checkErr(err, "")
+		importItem(&vault, path)
+
+	case "export":
+		var pattern string
+		var path string
+		err = parseCmdArgs(mode, cmdArgs, &pattern, &path)
+		checkErr(err, "")
+		exportItem(&vault, pattern, path)
 
 	case "set-password":
 		changeMasterPassword(&vault, string(masterPwd))

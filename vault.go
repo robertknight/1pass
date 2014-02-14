@@ -741,6 +741,14 @@ func writeJsonFile(path string, in interface{}) error {
 	return marshalToFile(path, in, json.Marshal)
 }
 
+func writePrettyJsonFile(path string, in interface{}) error {
+	marshalPrettyJson := func(in interface{}) ([]byte, error) {
+		data, err := json.MarshalIndent(in, "", "  ")
+		return data, err
+	}
+	return marshalToFile(path, in, marshalPrettyJson)
+}
+
 // derive an AES-128 key and initialization vector from an arbitrary-length
 // password and salt using MD5.
 //
