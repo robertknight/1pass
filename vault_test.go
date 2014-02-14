@@ -28,7 +28,7 @@ func newTestItem(vault *Vault) Item {
 func newTestContent(url string) ItemContent {
 	return ItemContent{
 		Urls: []ItemUrl{
-			{Label: "site", Url: url},
+			{Label: "website", Url: url},
 		},
 		Sections:   []ItemSection{},
 		FormFields: []WebFormField{},
@@ -61,8 +61,16 @@ func TestItemCrypt(t *testing.T) {
 		t.Fatalf("Creating test vault failed: %v", err)
 	}
 	item := newTestItem(&vault)
+	if len(item.Location) != 0 {
+		t.Fatalf("Unexpected location %s", item.Location)
+	}
 	content := newTestContent("crypt.com")
 	err = item.SetContent(content)
+
+	if item.Location != "crypt.com" {
+		t.Fatalf("Location field does not match 'website' URL")
+	}
+
 	if err != nil {
 		t.Error(err)
 	}

@@ -532,6 +532,7 @@ func (item *Item) Content() (ItemContent, error) {
 // Encrypts data using the item's encryption key
 // and stores it in item.Encrypted
 func (item *Item) SetContent(data ItemContent) error {
+	// ensure all sections are initialized
 	if data.Sections == nil {
 		data.Sections = []ItemSection{}
 	}
@@ -541,6 +542,15 @@ func (item *Item) SetContent(data ItemContent) error {
 	if data.FormFields == nil {
 		data.FormFields = []WebFormField{}
 	}
+
+	// if there is a 'website' field, update
+	// the 'location' key to match
+	for _, url := range data.Urls {
+		if url.Label == "website" {
+			item.Location = url.Url
+		}
+	}
+
 	json, err := json.Marshal(data)
 	if err != nil {
 		return err
