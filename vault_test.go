@@ -30,6 +30,8 @@ func newTestContent(url string) ItemContent {
 		Urls: []ItemUrl{
 			{Label: "site", Url: url},
 		},
+		Sections:   []ItemSection{},
+		FormFields: []WebFormField{},
 	}
 }
 

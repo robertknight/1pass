@@ -532,6 +532,15 @@ func (item *Item) Content() (ItemContent, error) {
 // Encrypts data using the item's encryption key
 // and stores it in item.Encrypted
 func (item *Item) SetContent(data ItemContent) error {
+	if data.Sections == nil {
+		data.Sections = []ItemSection{}
+	}
+	if data.Urls == nil {
+		data.Urls = []ItemUrl{}
+	}
+	if data.FormFields == nil {
+		data.FormFields = []WebFormField{}
+	}
 	json, err := json.Marshal(data)
 	if err != nil {
 		return err
