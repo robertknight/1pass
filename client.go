@@ -193,7 +193,7 @@ func listItems(vault *Vault, pattern string) {
 	})
 
 	for _, item := range items {
-		fmt.Printf("%s (%s)\n", item.Title, item.Type())
+		fmt.Printf("%s (%s, %s)\n", item.Title, item.Type(), item.Uuid[0:4])
 	}
 }
 
