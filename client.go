@@ -550,7 +550,7 @@ func removeItems(vault *Vault, pattern string) {
 	checkErr(err, "Unable to lookup items to remove")
 
 	for _, item := range items {
-		fmt.Printf("Remove '%s' from vault? Y/N\n", item.Title)
+		fmt.Printf("Remove '%s' from vault? This cannot be undone. Y/N\n", item.Title)
 		if readConfirmation() {
 			err = item.Remove()
 			if err != nil {
