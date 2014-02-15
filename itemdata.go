@@ -130,32 +130,35 @@ func AddressFromMap(m map[string]interface{}) ItemAddress {
 	}
 }
 
-// Details of the input forms to fill in a web
-// login page.
+// Stored value for an input field in a web
+// form.
 type WebFormField struct {
 	Value string `json:"value"`
-	Id    string `json:"id"`
 
-	// name of the field. For web forms this is the 'name'
+	// 'id' attribute of the <input> element
+	Id string `json:"id"`
+
+	// Name of the field. For web forms this is the 'name'
 	// attribute of the associated <input> element
 	Name string `json:"name"`
 
-	// single char code identifying the type of field value -
-	// 'T' - Text, 'P' - Password
+	// Single char code identifying the type of field value -
+	// (T)ext, (P)assword, (E)mail, (C)heckbox,
+	// (I)nput (eg. button)
 	Type string `json:"type"`
 
-	// category for the meaning of the value, eg. 'username',
-	// 'password'
+	// Purpose of the field, main values
+	// are 'username', 'password'
 	Designation string `json:"designation"`
 }
 
-// entry in the 'websites' list
+// Entry in the 'websites' list
 type ItemUrl struct {
 	Label string `json:"label"`
 	Url   string `json:"url"`
 }
 
-// map of type code -> ItemType for
+// Map of type code -> ItemType for
 // standard item types
 var ItemTypes = map[string]ItemType{
 	"webforms.WebForm": ItemType{

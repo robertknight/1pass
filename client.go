@@ -479,7 +479,7 @@ func printHelp(cmd string) {
 		sortSlice(sortedCommands, func(a, b interface{}) bool {
 			return a.(commandMode).command < b.(commandMode).command
 		})
-		
+
 		// maximum width for command names before
 		// description is moved onto next line
 		cmdWidth := 12
