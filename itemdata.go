@@ -43,7 +43,7 @@ type ItemField struct {
 	Name string `json:"n"`
 	// User-visible title of the field
 	Title string      `json:"t"`
-	Value interface{} `json:"v"`
+	Value interface{} `json:"v,omitempty"`
 }
 
 func (field ItemField) ValueString() string {
