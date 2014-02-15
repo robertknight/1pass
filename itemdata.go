@@ -25,6 +25,7 @@ type ItemContent struct {
 	FormFields []WebFormField `json:"fields"`
 	HtmlMethod string         `json:"htmlMethod"`
 	HtmlAction string         `json:"htmlAction"`
+	HtmlId     string         `json:"htmlID,omitempty"`
 }
 
 // Section of an item's contents
