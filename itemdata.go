@@ -230,6 +230,12 @@ var ItemTypes = map[string]ItemType{
 		name:       "Identity",
 		shortAlias: "id",
 	},
+	// internal entry type created for items
+	// that have been removed from the trash
+	"system.Tombstone": ItemType{
+		name:       "Tombstone",
+		shortAlias: "tombstone",
+	},
 }
 
 const (

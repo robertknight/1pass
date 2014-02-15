@@ -70,6 +70,16 @@ var commandModes = []commandMode{
 		argNames:    []string{"pattern"},
 	},
 	{
+		command:     "trash",
+		description: "Move items to the trash",
+		argNames:    []string{"pattern"},
+	},
+	{
+		command:     "restore",
+		description: "Restore items from the trash",
+		argNames:    []string{"pattern"},
+	},
+	{
 		command:     "rename",
 		description: "Renames an item in the vault",
 		argNames:    []string{"pattern", "new-title"},
@@ -193,7 +203,11 @@ func listItems(vault *Vault, pattern string) {
 	})
 
 	for _, item := range items {
-		fmt.Printf("%s (%s, %s)\n", item.Title, item.Type(), item.Uuid[0:4])
+		trashState := ""
+		if item.Trashed {
+			trashState = " (in trash)"
+		}
+		fmt.Printf("%s (%s, %s)%s\n", item.Title, item.Type(), item.Uuid[0:4], trashState)
 	}
 }
 
@@ -541,6 +555,33 @@ func removeItems(vault *Vault, pattern string) {
 	}
 }
 
+func trashItems(vault *Vault, pattern string) {
+	items, err := lookupItems(vault, pattern)
+	checkErr(err, "Unable to lookup items to trash")
+	for _, item := range items {
+		fmt.Printf("Send '%s' to the trash? Y/N\n", item.Title)
+		if readConfirmation() {
+			item.Trashed = true
+			err = item.Save()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to trash item: %s\n", err)
+			}
+		}
+	}
+}
+
+func restoreItems(vault *Vault, pattern string) {
+	items, err := lookupItems(vault, pattern)
+	checkErr(err, "Unable to lookup items to restore")
+	for _, item := range items {
+		item.Trashed = false
+		err = item.Save()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to restore item: %s\n", err)
+		}
+	}
+}
+
 func lookupSingleItem(vault *Vault, pattern string) (Item, error) {
 	items, err := lookupItems(vault, pattern)
 	checkErr(err, "Unable to lookup items")
@@ -859,6 +900,18 @@ to specify an existing vault or '%s new <path>' to create a new one
 		err = parseCmdArgs(mode, cmdArgs, &pattern)
 		checkErr(err, "")
 		removeItems(&vault, pattern)
+
+	case "trash":
+		var pattern string
+		err = parseCmdArgs(mode, cmdArgs, &pattern)
+		checkErr(err, "")
+		trashItems(&vault, pattern)
+
+	case "restore":
+		var pattern string
+		err = parseCmdArgs(mode, cmdArgs, &pattern)
+		checkErr(err, "")
+		restoreItems(&vault, pattern)
 
 	case "rename":
 		var pattern string

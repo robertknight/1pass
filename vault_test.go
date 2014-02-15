@@ -143,6 +143,31 @@ func TestSaveLoadRemoveItem(t *testing.T) {
 		t.Errorf("Failed to update item content. Actual: %s, expected: %s", content, newContent)
 	}
 
+	// trash the saved item
+	item.Trashed = true
+	err = item.Save()
+	if err != nil {
+		t.Errorf("Failed to move item to trash: %v", err)
+	}
+	loadedItem, err = item.vault.LoadItem(item.Uuid)
+	if err != nil {
+		t.Errorf("Failed to load trashed item: %v", err)
+	}
+	if !loadedItem.Trashed {
+		t.Errorf("Loaded item was not trashed: %v", err)
+	}
+
+	// restore the saved item
+	item.Trashed = false
+	err = item.Save()
+	if err != nil {
+		t.Errorf("Failed to restore trashed item: %v", err)
+	}
+	loadedItem, err = item.vault.LoadItem(item.Uuid)
+	if loadedItem.Trashed {
+		t.Errorf("Failed to restore item from trash: %v", err)
+	}
+
 	// remove the saved item
 	err = item.Remove()
 	if err != nil {
@@ -150,7 +175,7 @@ func TestSaveLoadRemoveItem(t *testing.T) {
 	}
 
 	loadedItem, err = item.vault.LoadItem(item.Uuid)
-	if err == nil {
+	if loadedItem.TypeName != "system.Tombstone" {
 		t.Errorf("Failed to remove saved item")
 	}
 }

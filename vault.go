@@ -73,6 +73,10 @@ type Item struct {
 	// (Priority?) of the item in the favorites list
 	FaveIndex int `json:"faveIndex"`
 
+	// Indicates whether the item has been moved
+	// to the Trash
+	Trashed bool `json:"trashed"`
+
 	vault *Vault
 }
 
@@ -332,6 +336,19 @@ func (vault *Vault) AddItem(title string, itemType string, content ItemContent) 
 
 // Remove the item from the vault
 func (item *Item) Remove() error {
+	item.TypeName = "system.Tombstone"
+	item.Title = "Unnamed"
+	item.Trashed = true
+	err := item.SetContent(ItemContent{})
+	if err != nil {
+		return err
+	}
+	err = item.Save()
+	return err
+}
+
+// Remove the item's data files from the vault
+func (item *Item) removeDataFiles() error {
 	itemDataFile := item.Path()
 
 	// remove contents.js entry
@@ -371,15 +388,19 @@ func (item *Item) Remove() error {
 }
 
 func (item *Item) contentsEntry() []interface{} {
+	trashedStr := "N"
+	if item.Trashed {
+		trashedStr = "Y"
+	}
 	entry := []interface{}{
 		item.Uuid,
 		item.TypeName,
 		item.Title,
 		item.Location,
 		item.UpdatedAt,
-		"",  // TODO - Check what this is
-		0,   // TODO - Check what this is
-		"N", // TODO - Check what this is
+		item.FolderUuid,
+		0, // TODO - Check what this is
+		trashedStr,
 	}
 	return entry
 }
@@ -396,6 +417,7 @@ func readContentsEntry(entry []interface{}) Item {
 		Location:   entry[3].(string),
 		UpdatedAt:  uint64(entry[4].(float64)),
 		FolderUuid: entry[5].(string),
+		Trashed:    entry[7].(string) == "Y",
 	}
 }
 
@@ -478,7 +500,7 @@ func (vault *Vault) ListItems() ([]Item, error) {
 			err := readJsonFile(vault.Path+"/"+item.Name(), &itemData)
 			if err != nil {
 				fmt.Printf("Failed to read item: %s: %v\n", item.Name(), err)
-			} else {
+			} else if itemData.TypeName != "system.Tombstone" {
 				items = append(items, itemData)
 			}
 		}
