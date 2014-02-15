@@ -475,23 +475,28 @@ func printHelp(cmd string) {
 		fmt.Fprintf(os.Stderr, "%s is a tool for managing 1Password vaults.\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Supported commands:\n\n")
 
-		maxCmdLen := 0
-		for _, cmd := range commandModes {
-			if cmdLen := len(cmd.command); cmdLen > maxCmdLen {
-				maxCmdLen = cmdLen
-			}
-		}
-
 		sortedCommands := append([]commandMode{}, commandModes...)
 		sortSlice(sortedCommands, func(a, b interface{}) bool {
 			return a.(commandMode).command < b.(commandMode).command
 		})
+		
+		// maximum width for command names before
+		// description is moved onto next line
+		cmdWidth := 12
 		for _, cmd := range sortedCommands {
 			if cmd.internal {
 				continue
 			}
-			padding := maxCmdLen - len(cmd.command) + 2
-			fmt.Fprintf(os.Stderr, "  %s%*.s%s\n", cmd.command, padding, "", cmd.description)
+			fmt.Fprintf(os.Stderr, "  %s", cmd.command)
+			padding := 0
+			if len(cmd.command) > cmdWidth {
+				fmt.Fprintf(os.Stderr, "\n")
+				padding = 2 + cmdWidth
+			} else {
+				padding = cmdWidth - len(cmd.command)
+			}
+			padding += 2
+			fmt.Fprintf(os.Stderr, "  %*.s%s\n", padding, "", cmd.description)
 		}
 		fmt.Printf("\nUse '%s help <command>' for more information about using a given command.\n\n", os.Args[0])
 	} else {
