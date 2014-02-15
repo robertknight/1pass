@@ -203,7 +203,7 @@ func prettyJson(src []byte) []byte {
 	return buffer.Bytes()
 }
 
-func displayItem(item Item) {
+func showItem(item Item) {
 	fmt.Printf("%s\n", item.Title)
 	fmt.Printf("Info:\n")
 	fmt.Printf("  ID: %s\n", item.Uuid)
@@ -223,7 +223,7 @@ func displayItem(item Item) {
 	fmt.Printf(content.String())
 }
 
-func displayItemJson(item Item) {
+func showItemJson(item Item) {
 	fmt.Printf("%s: %s: %s\n", item.Title, item.Uuid, item.ContentsHash)
 	decrypted, err := item.ContentJson()
 	if err != nil {
@@ -838,9 +838,9 @@ to specify an existing vault or '%s new <path>' to create a new one
 				fmt.Println()
 			}
 			if mode == "show" {
-				displayItem(item)
+				showItem(item)
 			} else {
-				displayItemJson(item)
+				showItemJson(item)
 			}
 		}
 	case "add":
