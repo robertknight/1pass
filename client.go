@@ -499,10 +499,13 @@ func readConfirmation() bool {
 }
 
 func fatalErr(err error, context string) {
+	if err == nil {
+		err = fmt.Errorf("")
+	}
 	if context == "" {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 	} else {
-		fmt.Fprintf(os.Stderr, "%s: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%s: %v\n", context, err)
 	}
 	os.Exit(1)
 }
@@ -541,8 +544,7 @@ func createNewVault(path string) {
 	fmt.Printf("\nRe-enter master password: ")
 	masterPwd2, _ := terminal.ReadPassword(0)
 	if !bytes.Equal(masterPwd, masterPwd2) {
-		fmt.Fprintf(os.Stderr, "Passwords do not match")
-		os.Exit(1)
+		fatalErr(nil, "Passwords do not match")
 	}
 
 	security := VaultSecurity{MasterPwd: string(masterPwd)}
@@ -619,12 +621,11 @@ func changeMasterPassword(vault *Vault, currentPwd string) {
 	newPwd2, err := terminal.ReadPassword(0)
 	fmt.Println()
 	if !bytes.Equal(newPwd, newPwd2) {
-		fmt.Fprintf(os.Stderr, "Passwords do not match\n")
-		os.Exit(1)
+		fatalErr(nil, "Passwords do not match")
 	}
 	err = vault.SetMasterPassword(currentPwd, string(newPwd))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to change master password: %v\n", err)
+		fatalErr(err, "Failed to change master password")
 	}
 }
 
@@ -692,25 +693,24 @@ func lookupSingleItem(vault *Vault, pattern string) (Item, error) {
 func renameItem(vault *Vault, pattern string, newTitle string) {
 	item, err := lookupSingleItem(vault, pattern)
 	if err != nil {
-		os.Exit(1)
+		fatalErr(err, "Failed to find item to rename")
 	}
 	item.Title = newTitle
 	err = item.Save()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to change item title to '%s': %v\n", newTitle)
+		fatalErr(err, "Failed to rename item")
 	}
 }
 
 func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 	item, err := lookupSingleItem(vault, pattern)
 	if err != nil {
-		os.Exit(1)
+		fatalErr(err, "Failed to find item to copy")
 	}
 
 	content, err := item.Content()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to decrypt item '%s': %v\n", item.Title, err)
-		os.Exit(1)
+		fatalErr(err, fmt.Sprintf("Failed to decrypt item '%s'", item.Title))
 	}
 
 	fieldTitle := ""
@@ -739,7 +739,7 @@ func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 
 	err = clipboard.WriteAll(value)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to copy '%s' field to clipboard: %v\n", field, err)
+		fatalErr(err, fmt.Sprintf("Failed to copy '%s' field to clipboard", field))
 	}
 
 	fmt.Printf("Copied '%s' to clipboard for item '%s'\n", fieldTitle, item.Title)
@@ -750,8 +750,7 @@ func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 func exportItemTemplates(vault *Vault, pattern string) {
 	items, err := vault.ListItems()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to list vault items: %v\n", err)
-		os.Exit(1)
+		fatalErr(err, "Unable to list vault items")
 	}
 
 	typeTemplates := map[string]ItemTemplate{}
@@ -809,8 +808,7 @@ func exportItemTemplates(vault *Vault, pattern string) {
 
 	data, err := json.Marshal(typeTemplates)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error dumping item templates: %v\n", err)
-		os.Exit(1)
+		fatalErr(err, "Unable to export item templates")
 	}
 	_, _ = os.Stdout.Write(prettyJson(data))
 }
@@ -828,7 +826,7 @@ func exportItem(vault *Vault, pattern string, path string) {
 	}
 	content, err := item.Content()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to read item content: %v\n", err)
+		fatalErr(err, "Unable to read item content")
 	}
 	exportedItem := ExportedItem{
 		Title:   item.Title,
@@ -837,7 +835,7 @@ func exportItem(vault *Vault, pattern string, path string) {
 	}
 	err = writePrettyJsonFile(path, exportedItem)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to save item to '%s': %v\n", path, err)
+		fatalErr(err, fmt.Sprintf("Unable to save item to '%s'", path))
 	}
 }
 
@@ -845,13 +843,11 @@ func importItem(vault *Vault, path string) {
 	var exportedItem ExportedItem
 	err := readJsonFile(path, &exportedItem)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to import item: %v\n", err)
-		os.Exit(1)
+		fatalErr(err, fmt.Sprintf("Unable to read '%s'", path))
 	}
 	item, err := vault.AddItem(exportedItem.Title, exportedItem.Type, exportedItem.Content)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to import item: %v\n", err)
-		os.Exit(1)
+		fatalErr(err, fmt.Sprintf("Unable to import item '%s'", exportedItem.Title))
 	}
 	fmt.Printf("Imported item '%s' (%s)\n", item.Title, item.Uuid)
 }
@@ -916,8 +912,7 @@ to specify an existing vault or '%s new <path>' to create a new one
 	}
 	vault, err := OpenVault(config.VaultDir)
 	if err != nil {
-		fmt.Printf("Unable to setup vault: %v\n", err)
-		os.Exit(1)
+		fatalErr(err, "Unable to setup vault")
 	}
 
 	if mode == "info" {
@@ -980,8 +975,7 @@ to specify an existing vault or '%s new <path>' to create a new one
 
 		err = addItem(&vault, title, itemType)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to add item: %v\n", err)
-			os.Exit(1)
+			fatalErr(err, "Unable to add item")
 		}
 	case "update":
 		var pattern string
