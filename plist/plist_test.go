@@ -97,7 +97,7 @@ func TestMarshalPlist(t *testing.T) {
 		},
 		FieldWithJsonNameTag: 23,
 	}
-	data, err := MarshalPlist(in)
+	data, err := Marshal(in)
 	if err != nil {
 		t.Error(err)
 	}
