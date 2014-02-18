@@ -21,6 +21,7 @@ import (
 	"code.google.com/p/go.crypto/pbkdf2"
 	uuid "github.com/nu7hatch/gouuid"
 	"github.com/robertknight/1pass/jsonutil"
+	"github.com/robertknight/1pass/plist"
 )
 
 const Aes128KeyLen = 16
@@ -749,7 +750,7 @@ func decryptKey(masterPwd []byte, encryptedKey []byte, salt []byte, iterCount in
 }
 
 func writePlistFile(path string, in interface{}) error {
-	return jsonutil.MarshalToFile(path, in, MarshalPlist)
+	return jsonutil.MarshalToFile(path, in, plist.Marshal)
 }
 
 // derive an AES-128 key and initialization vector from an arbitrary-length

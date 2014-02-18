@@ -1,4 +1,4 @@
-package onepass
+package plist
 
 import (
 	"fmt"

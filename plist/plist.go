@@ -1,4 +1,4 @@
-package onepass
+package plist
 
 import (
 	"encoding/base64"
@@ -78,7 +78,7 @@ func plistElement(v interface{}) PlistXmlElement {
 }
 
 // Marshal an interface to a PList XML file.
-func MarshalPlist(v interface{}) (data []byte, err error) {
+func Marshal(v interface{}) (data []byte, err error) {
 	defer func() {
 		if marshalErr := recover(); marshalErr != nil {
 			err = fmt.Errorf("%v", marshalErr)
