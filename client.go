@@ -65,6 +65,11 @@ var commandModes = []commandMode{
 		extraHelp:   addItemHelp,
 	},
 	{
+		command:     "update",
+		description: "Update an existing item in the vault",
+		argNames:    []string{"pattern"},
+	},
+	{
 		command:     "remove",
 		description: "Remove items from the vault matching the given pattern",
 		argNames:    []string{"pattern"},
@@ -122,8 +127,8 @@ type clientConfig struct {
 var configPath = os.Getenv("HOME") + "/.1pass"
 
 // displays a prompt and reads a line of input
-func readLinePrompt(prompt string) string {
-	fmt.Printf("%s: ", prompt)
+func readLinePrompt(prompt string, args ...interface{}) string {
+	fmt.Printf(fmt.Sprintf("%s: ", prompt), args...)
 	return readLine()
 }
 
@@ -247,6 +252,53 @@ func showItemJson(item Item) {
 	fmt.Println(string(prettyJson([]byte(decrypted))))
 }
 
+func readFieldValue(field ItemField) interface{} {
+	var newValue interface{}
+	for newValue == nil {
+		var valueStr string
+		if field.Kind == "concealed" {
+			valueStr, _ = readNewPassword(field.Title)
+		} else if field.Kind == "address" {
+			newValue = ItemAddress{
+				Street:  readLinePrompt("Street"),
+				City:    readLinePrompt("City"),
+				Zip:     readLinePrompt("Zip"),
+				State:   readLinePrompt("State"),
+				Country: readLinePrompt("Country"),
+			}
+		} else {
+			valueStr = readLinePrompt("%s (%s)", field.Title, field.Kind)
+		}
+		if len(valueStr) == 0 {
+			break
+		}
+		if newValue == nil {
+			var err error
+			newValue, err = FieldValueFromString(field.Kind, valueStr)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s\n", err)
+			}
+		}
+	}
+	return newValue
+}
+
+func readFormFieldValue(field WebFormField) string {
+	var newValue string
+	if field.Type == "P" {
+		for {
+			var err error
+			newValue, err = readNewPassword(field.Name)
+			if err == nil {
+				break
+			}
+		}
+	} else {
+		newValue = readLinePrompt("%s (%s)", field.Name, field.Type)
+	}
+	return newValue
+}
+
 func addItem(vault *Vault, title string, shortTypeName string) error {
 	itemContent := ItemContent{}
 	var typeName string
@@ -285,33 +337,8 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 				Title: fieldTemplate.Title,
 				Kind:  fieldTemplate.Kind,
 			}
+			field.Value = readFieldValue(field)
 
-			for field.Value == nil {
-				var valueStr string
-				if field.Kind == "concealed" {
-					valueStr, _ = readNewPassword(field.Title)
-				} else if field.Kind == "address" {
-					field.Value = ItemAddress{
-						Street:  readLinePrompt("Street"),
-						City:    readLinePrompt("City"),
-						Zip:     readLinePrompt("Zip"),
-						State:   readLinePrompt("State"),
-						Country: readLinePrompt("Country"),
-					}
-				} else {
-					fmt.Printf("%s (%s): ", field.Title, field.Kind)
-					valueStr = readLine()
-				}
-				if len(valueStr) == 0 {
-					break
-				}
-				if field.Value == nil {
-					field.Value, err = FieldValueFromString(field.Kind, valueStr)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "%s\n", err)
-					}
-				}
-			}
 			section.Fields = append(section.Fields, field)
 		}
 		itemContent.Sections = append(itemContent.Sections, section)
@@ -325,17 +352,8 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 			Type:        formFieldTemplate.Type,
 			Designation: formFieldTemplate.Designation,
 		}
-		if field.Type == "P" {
-			for {
-				field.Value, err = readNewPassword(field.Name)
-				if err == nil {
-					break
-				}
-			}
-		} else {
-			fmt.Printf("%s (%s): ", field.Name, field.Type)
-			field.Value = readLine()
-		}
+		field.Value = readFormFieldValue(field)
+
 		itemContent.FormFields = append(itemContent.FormFields, field)
 	}
 
@@ -344,8 +362,7 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 		url := ItemUrl{
 			Label: urlTemplate.Label,
 		}
-		fmt.Printf("%s (URL): ", url.Label)
-		url.Url = readLine()
+		url.Url = readLinePrompt("%s (URL)", url.Label)
 		itemContent.Urls = append(itemContent.Urls, url)
 	}
 
@@ -353,6 +370,64 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 	item, err := vault.AddItem(title, typeName, itemContent)
 	err = item.Save()
 	return err
+}
+
+func updateItem(vault *Vault, pattern string) {
+	item, err := lookupSingleItem(vault, pattern)
+	if err != nil {
+		fatalErr(err, "Failed to find item to update")
+	}
+	content, err := item.Content()
+	if err != nil {
+		fatalErr(err, "Unable to read item content")
+	}
+
+	const clearStr = "x"
+
+	fmt.Printf(`Updating item '%s'. Use 'x' to clear field or 
+leave blank to keep current value.
+`, item.Title)
+	for i, section := range content.Sections {
+		for k, field := range section.Fields {
+			newValue := readFieldValue(field)
+			if newValue != nil {
+				content.Sections[i].Fields[k].Value = newValue
+			}
+		}
+	}
+
+	for i, field := range content.FormFields {
+		newValue := readFormFieldValue(field)
+		switch newValue {
+		case clearStr:
+			content.FormFields[i].Value = ""
+		case "":
+			// no change
+		default:
+			content.FormFields[i].Value = newValue
+		}
+	}
+
+	for i, url := range content.Urls {
+		newUrl := readLinePrompt("%s (URL)", url.Label)
+		switch newUrl {
+		case clearStr:
+			content.Urls[i].Url = ""
+		case "":
+			// no change
+		default:
+			content.Urls[i].Url = newUrl
+		}
+	}
+	err = item.SetContent(content)
+	if err != nil {
+		fatalErr(err, "Unable to save updated content")
+	}
+
+	err = item.Save()
+	if err != nil {
+		fatalErr(err, "Unable to save updated item")
+	}
 }
 
 func addItemHelp() string {
@@ -423,20 +498,28 @@ func readConfirmation() bool {
 	return err == nil && count > 0 && strings.ToLower(response) == "y"
 }
 
+func fatalErr(err error, context string) {
+	if context == "" {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+	} else {
+		fmt.Fprintf(os.Stderr, "%s: %v\n", err)
+	}
+	os.Exit(1)
+}
+
 func checkErr(err error, context string) {
 	if err != nil {
-		if context == "" {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-		} else {
-			fmt.Fprintf(os.Stderr, "%s: %v\n", err)
-		}
-		os.Exit(1)
+		fatalErr(err, context)
 	}
 }
 
 func readNewPassword(passType string) (string, error) {
 	fmt.Printf("%s (or '-' for a random new %s): ", passType, passType)
 	pwd, _ := terminal.ReadPassword(0)
+	if len(pwd) == 0 {
+		fmt.Println()
+		return "", nil
+	}
 	if string(pwd) == "-" {
 		pwd = []byte(genDefaultPassword())
 		fmt.Printf("(Random new password generated)")
@@ -900,6 +983,12 @@ to specify an existing vault or '%s new <path>' to create a new one
 			fmt.Fprintf(os.Stderr, "Failed to add item: %v\n", err)
 			os.Exit(1)
 		}
+	case "update":
+		var pattern string
+		err = parseCmdArgs(mode, cmdArgs, &pattern)
+		checkErr(err, "")
+		updateItem(&vault, pattern)
+
 	case "remove":
 		var pattern string
 		err = parseCmdArgs(mode, cmdArgs, &pattern)
