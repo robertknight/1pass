@@ -17,11 +17,19 @@ import (
 )
 
 type commandMode struct {
-	command     string
+	// name of the command, eg 'add', 'update'
+	command string
+	// one-line description of the command
 	description string
-	argNames    []string
-	extraHelp   func() string
-	internal    bool
+	// required and optional positional argument names
+	// optional args have a '[' prefix
+	argNames []string
+	// function which returns additional help text for
+	// use with 'help <command>'
+	extraHelp func() string
+	// indicates this is an internal command that should
+	// not be displayed in 'help' output
+	internal bool
 }
 
 var commandModes = []commandMode{
