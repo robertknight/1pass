@@ -92,7 +92,8 @@ var commandModes = []commandMode{
 	{
 		command:     "copy",
 		description: "Copy information from the given item to the clipboard",
-		argNames:    []string{"pattern", "field"},
+		argNames:    []string{"pattern", "[field]"},
+		extraHelp:   copyItemHelp,
 	},
 	{
 		command:     "export",
@@ -107,6 +108,7 @@ var commandModes = []commandMode{
 	{
 		command:     "set-password",
 		description: "Change the master password for the vault",
+		extraHelp:   setPasswordHelp,
 	},
 	{
 		command:     "help",
@@ -449,6 +451,14 @@ func addItemHelp() string {
 	return result
 }
 
+func copyItemHelp() string {
+	return `[field] specifies a pattern for the name of the field, form field or URL
+to copy. If omitted, defaults to 'password'.
+
+[field] patterns are matched against the field names in
+the same way that item name patterns are matched against item titles.`
+}
+
 func lookupItems(vault *Vault, pattern string) ([]Item, error) {
 	items, err := vault.ListItems()
 	if err != nil {
@@ -613,7 +623,7 @@ func printHelp(cmd string) {
 	}
 }
 
-func changeMasterPassword(vault *Vault, currentPwd string) {
+func setPassword(vault *Vault, currentPwd string) {
 	// TODO - Prompt for hint and save that to the .password.hint file
 	fmt.Printf("New master password: ")
 	newPwd, err := terminal.ReadPassword(0)
@@ -627,6 +637,18 @@ func changeMasterPassword(vault *Vault, currentPwd string) {
 	if err != nil {
 		fatalErr(err, "Failed to change master password")
 	}
+
+	fmt.Printf("The master password has been updated.\n\n")
+	fmt.Printf(setPasswordSyncNote)
+}
+
+const setPasswordSyncNote = `Note that after changing the password,
+other 1Password apps may still expect the old password until
+you unlock the vault with them and your new password is synced.
+`
+
+func setPasswordHelp() string {
+	return setPasswordSyncNote
 }
 
 func removeItems(vault *Vault, pattern string) {
@@ -711,6 +733,10 @@ func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 	content, err := item.Content()
 	if err != nil {
 		fatalErr(err, fmt.Sprintf("Failed to decrypt item '%s'", item.Title))
+	}
+
+	if fieldPattern == "" {
+		fieldPattern = "password"
 	}
 
 	fieldTitle := ""
@@ -1029,7 +1055,7 @@ to specify an existing vault or '%s new <path>' to create a new one
 		exportItem(&vault, pattern, path)
 
 	case "set-password":
-		changeMasterPassword(&vault, string(masterPwd))
+		setPassword(&vault, string(masterPwd))
 
 	case "export-item-templates":
 		var pattern string
