@@ -1,4 +1,4 @@
-package main
+package onepass
 
 import (
 	"encoding/base64"

@@ -1,4 +1,4 @@
-package main
+package onepass
 
 import (
 	"fmt"
@@ -8,9 +8,9 @@ import (
 
 type ItemType struct {
 	// human readable name of the item type
-	name string
+	Name string
 	// a short alias for this item type
-	shortAlias string
+	ShortAlias string
 }
 
 // Decrypted contents of an item, consisting primarily
@@ -163,82 +163,82 @@ type ItemUrl struct {
 // standard item types
 var ItemTypes = map[string]ItemType{
 	"webforms.WebForm": ItemType{
-		name:       "Login",
-		shortAlias: "login",
+		Name:       "Login",
+		ShortAlias: "login",
 	},
 	"wallet.financial.CreditCard": ItemType{
-		name:       "Credit Card",
-		shortAlias: "card",
+		Name:       "Credit Card",
+		ShortAlias: "card",
 	},
 	"wallet.computer.Router": ItemType{
-		name:       "Wireless Router",
-		shortAlias: "router",
+		Name:       "Wireless Router",
+		ShortAlias: "router",
 	},
 	"securenotes.SecureNote": ItemType{
-		name:       "Secure Note",
-		shortAlias: "note",
+		Name:       "Secure Note",
+		ShortAlias: "note",
 	},
 	"passwords.Password": ItemType{
-		name:       "Password",
-		shortAlias: "pass",
+		Name:       "Password",
+		ShortAlias: "pass",
 	},
 	"wallet.onlineservices.Email.v2": ItemType{
-		name:       "Email Account",
-		shortAlias: "email",
+		Name:       "Email Account",
+		ShortAlias: "email",
 	},
 	"system.folder.Regular": ItemType{
-		name:       "Folder",
-		shortAlias: "folder",
+		Name:       "Folder",
+		ShortAlias: "folder",
 	},
 	"wallet.financial.BankAccountUS": ItemType{
-		name:       "Bank Account",
-		shortAlias: "bank",
+		Name:       "Bank Account",
+		ShortAlias: "bank",
 	},
 	"wallet.computer.Database": ItemType{
-		name:       "Database",
-		shortAlias: "db",
+		Name:       "Database",
+		ShortAlias: "db",
 	},
 	"wallet.government.DriversLicense": ItemType{
-		name:       "Driver's License",
-		shortAlias: "driver",
+		Name:       "Driver's License",
+		ShortAlias: "driver",
 	},
 	"wallet.membership.Membership": ItemType{
-		name:       "Membership",
-		shortAlias: "membership",
+		Name:       "Membership",
+		ShortAlias: "membership",
 	},
 	"wallet.government.HuntingLicense": ItemType{
-		name:       "Outdoor License",
-		shortAlias: "outdoor",
+		Name:       "Outdoor License",
+		ShortAlias: "outdoor",
 	},
 	"wallet.government.Passport": ItemType{
-		name:       "Passport",
-		shortAlias: "passport",
+		Name:       "Passport",
+		ShortAlias: "passport",
 	},
 	"wallet.membership.RewardProgram": ItemType{
-		name:       "Reward Program",
-		shortAlias: "reward",
+		Name:       "Reward Program",
+		ShortAlias: "reward",
 	},
 	"wallet.computer.UnixServer": ItemType{
-		name:       "Unix Server",
-		shortAlias: "server",
+		Name:       "Unix Server",
+		ShortAlias: "server",
 	},
 	"wallet.government.SsnUS": ItemType{
-		name:       "Social Security Number",
-		shortAlias: "social",
+		Name:       "Social Security Number",
+		ShortAlias: "social",
 	},
 	"wallet.computer.License": ItemType{
-		name:       "Software License",
-		shortAlias: "software",
+		Name:       "Software License",
+		ShortAlias: "software",
 	},
 	"identities.Identity": ItemType{
-		name:       "Identity",
-		shortAlias: "id",
+		Name:       "Identity",
+		ShortAlias: "id",
 	},
 	// internal entry type created for items
 	// that have been removed from the trash
 	"system.Tombstone": ItemType{
-		name:       "Tombstone",
-		shortAlias: "tombstone",
+		Name:       "Tombstone",
+		ShortAlias: "tombstone",
 	},
 }
 

@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"code.google.com/p/go.crypto/ssh/terminal"
+	"github.com/robertknight/1pass/jsonutil"
+	"github.com/robertknight/1pass/onepass"
 	"github.com/robertknight/clipboard"
 )
 
@@ -151,18 +153,18 @@ func readLine() string {
 
 func readConfig() clientConfig {
 	var config clientConfig
-	_ = readJsonFile(configPath, &config)
+	_ = jsonutil.ReadFile(configPath, &config)
 	return config
 }
 
 func writeConfig(config *clientConfig) {
-	_ = writeJsonFile(configPath, config)
+	_ = jsonutil.WriteFile(configPath, config)
 }
 
 // generate a random password with default settings
 // for length and characters
 func genDefaultPassword() string {
-	return GenPassword(12)
+	return onepass.GenPassword(12)
 }
 
 // attempt to locate the keychain directory automatically
@@ -175,7 +177,7 @@ func findKeyChainDirs() []string {
 	if err == nil {
 		locateLines := strings.Split(string(locateOutput), "\n")
 		for _, path := range locateLines {
-			err = CheckVault(path)
+			err = onepass.CheckVault(path)
 			if err == nil {
 				paths = append(paths, path)
 			}
@@ -188,7 +190,7 @@ func findKeyChainDirs() []string {
 	}
 	for _, defaultPath := range defaultPaths {
 		if !sliceContains(paths, defaultPath) {
-			err = CheckVault(defaultPath)
+			err = onepass.CheckVault(defaultPath)
 			if err == nil {
 				paths = append(paths, defaultPath)
 			}
@@ -198,8 +200,8 @@ func findKeyChainDirs() []string {
 	return paths
 }
 
-func listItems(vault *Vault, pattern string) {
-	var items []Item
+func listItems(vault *onepass.Vault, pattern string) {
+	var items []onepass.Item
 	var err error
 
 	if len(pattern) > 0 {
@@ -214,7 +216,7 @@ func listItems(vault *Vault, pattern string) {
 	}
 
 	sortSlice(items, func(a, b interface{}) bool {
-		return strings.ToLower(a.(Item).Title) < strings.ToLower(b.(Item).Title)
+		return strings.ToLower(a.(onepass.Item).Title) < strings.ToLower(b.(onepass.Item).Title)
 	})
 
 	for _, item := range items {
@@ -232,7 +234,7 @@ func prettyJson(src []byte) []byte {
 	return buffer.Bytes()
 }
 
-func showItem(item Item) {
+func showItem(item onepass.Item) {
 	fmt.Printf("%s\n", item.Title)
 	fmt.Printf("Info:\n")
 	fmt.Printf("  ID: %s\n", item.Uuid)
@@ -252,7 +254,7 @@ func showItem(item Item) {
 	fmt.Printf(content.String())
 }
 
-func showItemJson(item Item) {
+func showItemJson(item onepass.Item) {
 	fmt.Printf("%s: %s: %s\n", item.Title, item.Uuid, item.ContentsHash)
 	decrypted, err := item.ContentJson()
 	if err != nil {
@@ -262,14 +264,14 @@ func showItemJson(item Item) {
 	fmt.Println(string(prettyJson([]byte(decrypted))))
 }
 
-func readFieldValue(field ItemField) interface{} {
+func readFieldValue(field onepass.ItemField) interface{} {
 	var newValue interface{}
 	for newValue == nil {
 		var valueStr string
 		if field.Kind == "concealed" {
 			valueStr, _ = readNewPassword(field.Title)
 		} else if field.Kind == "address" {
-			newValue = ItemAddress{
+			newValue = onepass.ItemAddress{
 				Street:  readLinePrompt("Street"),
 				City:    readLinePrompt("City"),
 				Zip:     readLinePrompt("Zip"),
@@ -284,7 +286,7 @@ func readFieldValue(field ItemField) interface{} {
 		}
 		if newValue == nil {
 			var err error
-			newValue, err = FieldValueFromString(field.Kind, valueStr)
+			newValue, err = onepass.FieldValueFromString(field.Kind, valueStr)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "%s\n", err)
 			}
@@ -293,7 +295,7 @@ func readFieldValue(field ItemField) interface{} {
 	return newValue
 }
 
-func readFormFieldValue(field WebFormField) string {
+func readFormFieldValue(field onepass.WebFormField) string {
 	var newValue string
 	if field.Type == "P" {
 		for {
@@ -309,12 +311,12 @@ func readFormFieldValue(field WebFormField) string {
 	return newValue
 }
 
-func addItem(vault *Vault, title string, shortTypeName string) error {
-	itemContent := ItemContent{}
+func addItem(vault *onepass.Vault, title string, shortTypeName string) error {
+	itemContent := onepass.ItemContent{}
 	var typeName string
-	for typeKey, itemType := range ItemTypes {
-		if itemType.shortAlias == shortTypeName {
-			itemContent = ItemContent{}
+	for typeKey, itemType := range onepass.ItemTypes {
+		if itemType.ShortAlias == shortTypeName {
+			itemContent = onepass.ItemContent{}
 			typeName = typeKey
 		}
 	}
@@ -323,8 +325,8 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 	}
 
 	// load item templates
-	templates := map[string]ItemTemplate{}
-	err := readJsonFile("item-templates.js", &templates)
+	templates := map[string]onepass.ItemTemplate{}
+	err := jsonutil.ReadFile("item-templates.js", &templates)
 	if err != nil {
 		return fmt.Errorf("Failed to read item templates: %v", err)
 	}
@@ -336,13 +338,13 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 
 	// read sections
 	for _, sectionTemplate := range template.Sections {
-		section := ItemSection{
+		section := onepass.ItemSection{
 			Name:   sectionTemplate.Name,
 			Title:  sectionTemplate.Title,
-			Fields: []ItemField{},
+			Fields: []onepass.ItemField{},
 		}
 		for _, fieldTemplate := range sectionTemplate.Fields {
-			field := ItemField{
+			field := onepass.ItemField{
 				Name:  fieldTemplate.Name,
 				Title: fieldTemplate.Title,
 				Kind:  fieldTemplate.Kind,
@@ -356,7 +358,7 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 
 	// read form fields
 	for _, formFieldTemplate := range template.FormFields {
-		field := WebFormField{
+		field := onepass.WebFormField{
 			Name:        formFieldTemplate.Name,
 			Id:          formFieldTemplate.Id,
 			Type:        formFieldTemplate.Type,
@@ -369,7 +371,7 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 
 	// read URLs
 	for _, urlTemplate := range template.Urls {
-		url := ItemUrl{
+		url := onepass.ItemUrl{
 			Label: urlTemplate.Label,
 		}
 		url.Url = readLinePrompt("%s (URL)", url.Label)
@@ -382,7 +384,7 @@ func addItem(vault *Vault, title string, shortTypeName string) error {
 	return err
 }
 
-func updateItem(vault *Vault, pattern string) {
+func updateItem(vault *onepass.Vault, pattern string) {
 	item, err := lookupSingleItem(vault, pattern)
 	if err != nil {
 		fatalErr(err, "Failed to find item to update")
@@ -441,20 +443,20 @@ leave blank to keep current value.
 }
 
 func addItemHelp() string {
-	typeAliases := map[string]ItemType{}
+	typeAliases := map[string]onepass.ItemType{}
 	sortedAliases := []string{}
-	for _, itemType := range ItemTypes {
-		typeAliases[itemType.shortAlias] = itemType
-		sortedAliases = append(sortedAliases, itemType.shortAlias)
+	for _, itemType := range onepass.ItemTypes {
+		typeAliases[itemType.ShortAlias] = itemType
+		sortedAliases = append(sortedAliases, itemType.ShortAlias)
 	}
 	sort.Strings(sortedAliases)
 
-	result := "Item Types:\n\n"
+	result := "onepass.Item Types:\n\n"
 	for i, alias := range sortedAliases {
 		if i > 0 {
 			result += "\n"
 		}
-		result = result + fmt.Sprintf("  %s - %s", alias, typeAliases[alias].name)
+		result = result + fmt.Sprintf("  %s - %s", alias, typeAliases[alias].Name)
 	}
 	return result
 }
@@ -467,13 +469,13 @@ to copy. If omitted, defaults to 'password'.
 the same way that item name patterns are matched against item titles.`
 }
 
-func lookupItems(vault *Vault, pattern string) ([]Item, error) {
+func lookupItems(vault *onepass.Vault, pattern string) ([]onepass.Item, error) {
 	items, err := vault.ListItems()
 	if err != nil {
 		return items, err
 	}
 	patternLower := strings.ToLower(pattern)
-	matches := []Item{}
+	matches := []onepass.Item{}
 	for _, item := range items {
 		if strings.Contains(strings.ToLower(item.Title), patternLower) {
 			matches = append(matches, item)
@@ -565,8 +567,8 @@ func createNewVault(path string) {
 		fatalErr(nil, "Passwords do not match")
 	}
 
-	security := VaultSecurity{MasterPwd: string(masterPwd)}
-	_, err = NewVault(path, security)
+	security := onepass.VaultSecurity{MasterPwd: string(masterPwd)}
+	_, err = onepass.NewVault(path, security)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create new vault: %v", err)
 	}
@@ -631,7 +633,7 @@ func printHelp(cmd string) {
 	}
 }
 
-func setPassword(vault *Vault, currentPwd string) {
+func setPassword(vault *onepass.Vault, currentPwd string) {
 	// TODO - Prompt for hint and save that to the .password.hint file
 	fmt.Printf("New master password: ")
 	newPwd, err := terminal.ReadPassword(0)
@@ -659,7 +661,7 @@ func setPasswordHelp() string {
 	return setPasswordSyncNote
 }
 
-func removeItems(vault *Vault, pattern string) {
+func removeItems(vault *onepass.Vault, pattern string) {
 	items, err := lookupItems(vault, pattern)
 	if err != nil {
 		fatalErr(err, "Unable to lookup items to remove")
@@ -676,7 +678,7 @@ func removeItems(vault *Vault, pattern string) {
 	}
 }
 
-func trashItems(vault *Vault, pattern string) {
+func trashItems(vault *onepass.Vault, pattern string) {
 	items, err := lookupItems(vault, pattern)
 	if err != nil {
 		fatalErr(err, "Unable to lookup items to trash")
@@ -693,7 +695,7 @@ func trashItems(vault *Vault, pattern string) {
 	}
 }
 
-func restoreItems(vault *Vault, pattern string) {
+func restoreItems(vault *onepass.Vault, pattern string) {
 	items, err := lookupItems(vault, pattern)
 	if err != nil {
 		fatalErr(err, "Unable to lookup items to restore")
@@ -707,14 +709,14 @@ func restoreItems(vault *Vault, pattern string) {
 	}
 }
 
-func lookupSingleItem(vault *Vault, pattern string) (Item, error) {
+func lookupSingleItem(vault *onepass.Vault, pattern string) (onepass.Item, error) {
 	items, err := lookupItems(vault, pattern)
 	if err != nil {
 		fatalErr(err, "Unable to lookup items")
 	}
 
 	if len(items) == 0 {
-		return Item{}, fmt.Errorf("No matching items")
+		return onepass.Item{}, fmt.Errorf("No matching items")
 	}
 
 	if len(items) > 1 {
@@ -722,13 +724,13 @@ func lookupSingleItem(vault *Vault, pattern string) (Item, error) {
 		for _, item := range items {
 			fmt.Fprintf(os.Stderr, "  %s (%s)\n", item.Title, item.Uuid)
 		}
-		return Item{}, fmt.Errorf("Multiple matching items")
+		return onepass.Item{}, fmt.Errorf("Multiple matching items")
 	}
 
 	return items[0], nil
 }
 
-func renameItem(vault *Vault, pattern string, newTitle string) {
+func renameItem(vault *onepass.Vault, pattern string, newTitle string) {
 	item, err := lookupSingleItem(vault, pattern)
 	if err != nil {
 		fatalErr(err, "Failed to find item to rename")
@@ -740,7 +742,7 @@ func renameItem(vault *Vault, pattern string, newTitle string) {
 	}
 }
 
-func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
+func copyToClipboard(vault *onepass.Vault, pattern string, fieldPattern string) {
 	item, err := lookupSingleItem(vault, pattern)
 	if err != nil {
 		fatalErr(err, "Failed to find item to copy")
@@ -776,7 +778,7 @@ func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 	}
 
 	if len(value) == 0 {
-		fatalErr(fmt.Errorf("Item has no fields, web form fields or websites matching pattern '%s'\n", fieldPattern), "")
+		fatalErr(fmt.Errorf("onepass.Item has no fields, web form fields or websites matching pattern '%s'\n", fieldPattern), "")
 	}
 
 	err = clipboard.WriteAll(value)
@@ -789,17 +791,17 @@ func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 
 // create a set of item templates based on existing
 // items in a vault
-func exportItemTemplates(vault *Vault, pattern string) {
+func exportItemTemplates(vault *onepass.Vault, pattern string) {
 	items, err := vault.ListItems()
 	if err != nil {
 		fatalErr(err, "Unable to list vault items")
 	}
 
-	typeTemplates := map[string]ItemTemplate{}
+	typeTemplates := map[string]onepass.ItemTemplate{}
 	for _, item := range items {
-		typeTemplate := ItemTemplate{
-			Sections:   []ItemSection{},
-			FormFields: []WebFormField{},
+		typeTemplate := onepass.ItemTemplate{
+			Sections:   []onepass.ItemSection{},
+			FormFields: []onepass.WebFormField{},
 		}
 		if !strings.HasPrefix(strings.ToLower(item.Title), pattern) {
 			continue
@@ -812,13 +814,13 @@ func exportItemTemplates(vault *Vault, pattern string) {
 
 		// section templates
 		for _, section := range content.Sections {
-			sectionTemplate := ItemSection{
+			sectionTemplate := onepass.ItemSection{
 				Name:   section.Name,
 				Title:  section.Title,
-				Fields: []ItemField{},
+				Fields: []onepass.ItemField{},
 			}
 			for _, field := range section.Fields {
-				fieldTemplate := ItemField{
+				fieldTemplate := onepass.ItemField{
 					Name:  field.Name,
 					Title: field.Title,
 					Kind:  field.Kind,
@@ -830,7 +832,7 @@ func exportItemTemplates(vault *Vault, pattern string) {
 
 		// web form field templates
 		for _, formField := range content.FormFields {
-			formTemplate := WebFormField{
+			formTemplate := onepass.WebFormField{
 				Name:        formField.Name,
 				Id:          formField.Id,
 				Type:        formField.Type,
@@ -841,7 +843,7 @@ func exportItemTemplates(vault *Vault, pattern string) {
 
 		// URL templates
 		for _, url := range content.Urls {
-			urlTemplate := ItemUrl{Label: url.Label}
+			urlTemplate := onepass.ItemUrl{Label: url.Label}
 			typeTemplate.Urls = append(typeTemplate.Urls, urlTemplate)
 		}
 
@@ -856,12 +858,12 @@ func exportItemTemplates(vault *Vault, pattern string) {
 }
 
 type ExportedItem struct {
-	Title   string      `json:"title"`
-	Type    string      `json:"type"`
-	Content ItemContent `json:"content"`
+	Title   string              `json:"title"`
+	Type    string              `json:"type"`
+	Content onepass.ItemContent `json:"content"`
 }
 
-func exportItem(vault *Vault, pattern string, path string) {
+func exportItem(vault *onepass.Vault, pattern string, path string) {
 	item, err := lookupSingleItem(vault, pattern)
 	if err != nil {
 		os.Exit(1)
@@ -875,15 +877,15 @@ func exportItem(vault *Vault, pattern string, path string) {
 		Type:    item.TypeName,
 		Content: content,
 	}
-	err = writePrettyJsonFile(path, exportedItem)
+	err = jsonutil.WritePrettyFile(path, exportedItem)
 	if err != nil {
 		fatalErr(err, fmt.Sprintf("Unable to save item to '%s'", path))
 	}
 }
 
-func importItem(vault *Vault, path string) {
+func importItem(vault *onepass.Vault, path string) {
 	var exportedItem ExportedItem
-	err := readJsonFile(path, &exportedItem)
+	err := jsonutil.ReadFile(path, &exportedItem)
 	if err != nil {
 		fatalErr(err, fmt.Sprintf("Unable to read '%s'", path))
 	}
@@ -894,7 +896,7 @@ func importItem(vault *Vault, path string) {
 	fmt.Printf("Imported item '%s' (%s)\n", item.Title, item.Uuid)
 }
 
-func handleVaultCmd(vault *Vault, mode string, cmdArgs []string) {
+func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 	var err error
 	switch mode {
 	case "list":
@@ -1086,13 +1088,13 @@ func main() {
 	if config.VaultDir == "" {
 		initVaultConfig(&config)
 	}
-	vault, err := OpenVault(config.VaultDir)
+	vault, err := onepass.OpenVault(config.VaultDir)
 	if err != nil {
 		fatalErr(err, "Unable to setup vault")
 	}
 
 	if mode == "info" {
-		fmt.Printf("Vault path: %s\n", config.VaultDir)
+		fmt.Printf("onepass.Vault path: %s\n", config.VaultDir)
 		return
 	}
 
@@ -1106,7 +1108,7 @@ func main() {
 
 	err = vault.Unlock(string(masterPwd))
 	if err != nil {
-		if _, isPassError := err.(DecryptError); isPassError {
+		if _, isPassError := err.(onepass.DecryptError); isPassError {
 			fmt.Printf("Unable to unlock vault using the given password\n")
 		} else {
 			fmt.Printf("Unable to unlock vault: %v\n", err)

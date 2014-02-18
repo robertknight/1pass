@@ -1,4 +1,4 @@
-package main
+package onepass
 
 import (
 	"crypto/aes"
@@ -20,6 +20,7 @@ import (
 
 	"code.google.com/p/go.crypto/pbkdf2"
 	uuid "github.com/nu7hatch/gouuid"
+	"github.com/robertknight/1pass/jsonutil"
 )
 
 const Aes128KeyLen = 16
@@ -176,7 +177,7 @@ func NewVault(vaultPath string, security VaultSecurity) (Vault, error) {
 	}
 
 	// create empty contents.js file
-	err = writeJsonFile(dataDir+"/contents.js", []string{})
+	err = jsonutil.WriteFile(dataDir+"/contents.js", []string{})
 	if err != nil {
 		return Vault{}, fmt.Errorf("Failed to create contents.js file")
 	}
@@ -225,7 +226,7 @@ func OpenVault(vaultPath string) (Vault, error) {
 // and items can be added or updated
 func (vault *Vault) Unlock(pwd string) error {
 	var keyList encryptionKeys
-	err := readJsonFile(vault.Path+"/encryptionKeys.js", &keyList)
+	err := jsonutil.ReadFile(vault.Path+"/encryptionKeys.js", &keyList)
 	if err != nil {
 		return errors.New("Failed to read encryption key file")
 	}
@@ -261,7 +262,7 @@ func (vault *Vault) Lock() {
 }
 
 func saveEncryptionKeys(dataDir string, keyList encryptionKeys) (err error) {
-	err = writeJsonFile(dataDir+"/encryptionKeys.js", keyList)
+	err = jsonutil.WriteFile(dataDir+"/encryptionKeys.js", keyList)
 	if err != nil {
 		return
 	}
@@ -275,7 +276,7 @@ func saveEncryptionKeys(dataDir string, keyList encryptionKeys) (err error) {
 func (vault *Vault) SetMasterPassword(currentPwd string, newPwd string) error {
 	var keyList encryptionKeys
 	keyFilePath := vault.Path + "/encryptionKeys.js"
-	err := readJsonFile(keyFilePath, &keyList)
+	err := jsonutil.ReadFile(keyFilePath, &keyList)
 	if err != nil {
 		return errors.New("Failed to read encryption key file")
 	}
@@ -354,7 +355,7 @@ func (item *Item) removeDataFiles() error {
 	// remove contents.js entry
 	contentsFilePath := item.vault.Path + "/contents.js"
 	var contentsEntries [][]interface{}
-	err := readJsonFile(contentsFilePath, &contentsEntries)
+	err := jsonutil.ReadFile(contentsFilePath, &contentsEntries)
 	if err != nil {
 		return fmt.Errorf("Failed to read contents.js: %v", err)
 	}
@@ -373,7 +374,7 @@ func (item *Item) removeDataFiles() error {
 		return fmt.Errorf("Entry '%s' (ID: %s) not found", item.Title, item.Uuid)
 	}
 
-	err = writeJsonFile(contentsFilePath, newContentsEntries)
+	err = jsonutil.WriteFile(contentsFilePath, newContentsEntries)
 	if err != nil {
 		return fmt.Errorf("Failed to update contents.js: %v", err)
 	}
@@ -443,7 +444,7 @@ func (item *Item) Save() error {
 
 	// save item to .1password file
 	itemPath := item.Path()
-	err := writeJsonFile(itemPath, item)
+	err := jsonutil.WriteFile(itemPath, item)
 	if err != nil {
 		return fmt.Errorf("Failed to save item %s: %v", item.Title, err)
 	}
@@ -451,7 +452,7 @@ func (item *Item) Save() error {
 	// update contents.js entry
 	contentsFilePath := item.vault.Path + "/contents.js"
 	var contentsEntries [][]interface{}
-	err = readJsonFile(contentsFilePath, &contentsEntries)
+	err = jsonutil.ReadFile(contentsFilePath, &contentsEntries)
 	if err != nil {
 		return fmt.Errorf("Failed to read contents.js: %v", err)
 	}
@@ -467,7 +468,7 @@ func (item *Item) Save() error {
 	if !foundExisting {
 		contentsEntries = append(contentsEntries, item.contentsEntry())
 	}
-	err = writeJsonFile(contentsFilePath, contentsEntries)
+	err = jsonutil.WriteFile(contentsFilePath, contentsEntries)
 	if err != nil {
 		return fmt.Errorf("Failed to update contents.js: %v", err)
 	}
@@ -479,7 +480,7 @@ func (vault *Vault) LoadItem(uuid string) (Item, error) {
 	item := Item{
 		vault: vault,
 	}
-	err := readJsonFile(vault.Path+"/"+uuid+".1password", &item)
+	err := jsonutil.ReadFile(vault.Path+"/"+uuid+".1password", &item)
 	if err != nil {
 		return Item{}, err
 	}
@@ -497,7 +498,7 @@ func (vault *Vault) ListItems() ([]Item, error) {
 	for _, item := range dirEntries {
 		if path.Ext(item.Name()) == ".1password" {
 			itemData := Item{vault: vault}
-			err := readJsonFile(vault.Path+"/"+item.Name(), &itemData)
+			err := jsonutil.ReadFile(vault.Path+"/"+item.Name(), &itemData)
 			if err != nil {
 				fmt.Printf("Failed to read item: %s: %v\n", item.Name(), err)
 			} else if itemData.TypeName != "system.Tombstone" {
@@ -611,7 +612,7 @@ func (item *Item) SetContentJson(content string) error {
 func (item *Item) Type() string {
 	itemType, ok := ItemTypes[item.TypeName]
 	if ok {
-		return itemType.name
+		return itemType.Name
 	} else {
 		return "Unknown"
 	}
@@ -747,47 +748,8 @@ func decryptKey(masterPwd []byte, encryptedKey []byte, salt []byte, iterCount in
 	return decryptedKey, nil
 }
 
-func readJsonFile(path string, out interface{}) error {
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	content, err := ioutil.ReadAll(file)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(content, out)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-type MarshalFunc func(interface{}) ([]byte, error)
-
-func marshalToFile(path string, in interface{}, marshal MarshalFunc) error {
-	data, err := marshal(in)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(path, data, 0644)
-	return err
-}
-
 func writePlistFile(path string, in interface{}) error {
-	return marshalToFile(path, in, MarshalPlist)
-}
-
-func writeJsonFile(path string, in interface{}) error {
-	return marshalToFile(path, in, json.Marshal)
-}
-
-func writePrettyJsonFile(path string, in interface{}) error {
-	marshalPrettyJson := func(in interface{}) ([]byte, error) {
-		data, err := json.MarshalIndent(in, "", "  ")
-		return data, err
-	}
-	return marshalToFile(path, in, marshalPrettyJson)
+	return jsonutil.MarshalToFile(path, in, MarshalPlist)
 }
 
 // derive an AES-128 key and initialization vector from an arbitrary-length
