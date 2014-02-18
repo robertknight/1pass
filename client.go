@@ -147,7 +147,7 @@ func readConfig() clientConfig {
 	return config
 }
 
-func writeConfig(config clientConfig) {
+func writeConfig(config *clientConfig) {
 	_ = writeJsonFile(configPath, config)
 }
 
@@ -653,7 +653,9 @@ func setPasswordHelp() string {
 
 func removeItems(vault *Vault, pattern string) {
 	items, err := lookupItems(vault, pattern)
-	checkErr(err, "Unable to lookup items to remove")
+	if err != nil {
+		fatalErr(err, "Unable to lookup items to remove")
+	}
 
 	for _, item := range items {
 		fmt.Printf("Remove '%s' from vault? This cannot be undone. Y/N\n", item.Title)
@@ -668,7 +670,9 @@ func removeItems(vault *Vault, pattern string) {
 
 func trashItems(vault *Vault, pattern string) {
 	items, err := lookupItems(vault, pattern)
-	checkErr(err, "Unable to lookup items to trash")
+	if err != nil {
+		fatalErr(err, "Unable to lookup items to trash")
+	}
 	for _, item := range items {
 		fmt.Printf("Send '%s' to the trash? Y/N\n", item.Title)
 		if readConfirmation() {
@@ -683,7 +687,9 @@ func trashItems(vault *Vault, pattern string) {
 
 func restoreItems(vault *Vault, pattern string) {
 	items, err := lookupItems(vault, pattern)
-	checkErr(err, "Unable to lookup items to restore")
+	if err != nil {
+		fatalErr(err, "Unable to lookup items to restore")
+	}
 	for _, item := range items {
 		item.Trashed = false
 		err = item.Save()
@@ -695,7 +701,9 @@ func restoreItems(vault *Vault, pattern string) {
 
 func lookupSingleItem(vault *Vault, pattern string) (Item, error) {
 	items, err := lookupItems(vault, pattern)
-	checkErr(err, "Unable to lookup items")
+	if err != nil {
+		fatalErr(err, "Unable to lookup items")
+	}
 
 	if len(items) == 0 {
 		return Item{}, fmt.Errorf("No matching items")
@@ -760,7 +768,7 @@ func copyToClipboard(vault *Vault, pattern string, fieldPattern string) {
 	}
 
 	if len(value) == 0 {
-		fmt.Fprintf(os.Stderr, "Item has no fields, web form fields or websites matching pattern '%s'\n", fieldPattern)
+		fatalErr(fmt.Errorf("Item has no fields, web form fields or websites matching pattern '%s'\n", fieldPattern), "")
 	}
 
 	err = clipboard.WriteAll(value)
@@ -878,106 +886,26 @@ func importItem(vault *Vault, path string) {
 	fmt.Printf("Imported item '%s' (%s)\n", item.Title, item.Uuid)
 }
 
-func main() {
-	flag.Usage = func() {
-		printHelp("")
-	}
-	flag.Parse()
-	config := readConfig()
-
-	if len(flag.Args()) < 1 || flag.Args()[0] == "help" {
-		command := ""
-		if len(flag.Args()) > 1 {
-			command = flag.Args()[1]
-		}
-		printHelp(command)
-		os.Exit(1)
-	}
-
-	mode := flag.Args()[0]
-	cmdArgs := flag.Args()[1:]
-
-	// handle command modes that do not require
-	// a vault to be opened
-	handled := true
-	if mode == "new" {
-		var path string
-		_ = parseCmdArgs(mode, cmdArgs, &path)
-		if len(path) == 0 {
-			path = os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain"
-		}
-		fmt.Printf("Creating new vault in '%s'\n", path)
-		createNewVault(path)
-	} else if mode == "gen-password" {
-		fmt.Printf("%s\n", genDefaultPassword())
-	} else if mode == "set-vault" {
-		var newPath string
-		_ = parseCmdArgs(mode, cmdArgs, &newPath)
-		config.VaultDir = newPath
-		writeConfig(config)
-	} else {
-		handled = false
-	}
-	if handled {
-		return
-	}
-
-	// open vault for other commands
-	if config.VaultDir == "" {
-		keyChains := findKeyChainDirs()
-		if len(keyChains) == 0 {
-			fmt.Fprintf(os.Stderr,
-				`Unable to locate a 1Password vault automatically, use '%s set-vault <path>'
-to specify an existing vault or '%s new <path>' to create a new one
-`, os.Args[0], os.Args[0])
-			os.Exit(1)
-		}
-		config.VaultDir = keyChains[0]
-		fmt.Printf("Using the password vault in '%s'\n", config.VaultDir)
-		writeConfig(config)
-	}
-	vault, err := OpenVault(config.VaultDir)
-	if err != nil {
-		fatalErr(err, "Unable to setup vault")
-	}
-
-	if mode == "info" {
-		fmt.Printf("Vault path: %s\n", config.VaultDir)
-		return
-	}
-
-	// unlock vault for remaining commands
-	fmt.Printf("Master password: ")
-	masterPwd, err := terminal.ReadPassword(0)
-	if err != nil {
-		os.Exit(1)
-	}
-	fmt.Println()
-
-	err = vault.Unlock(string(masterPwd))
-	if err != nil {
-		if _, isPassError := err.(DecryptError); isPassError {
-			fmt.Printf("Unable to unlock vault using the given password\n")
-		} else {
-			fmt.Printf("Unable to unlock vault: %v\n", err)
-		}
-		os.Exit(1)
-	}
-
+func handleVaultCmd(vault *Vault, mode string, cmdArgs []string) {
+	var err error
 	switch mode {
 	case "list":
 		var pattern string
 		parseCmdArgs(mode, cmdArgs, &pattern)
-		listItems(&vault, pattern)
+		listItems(vault, pattern)
 	case "show-json":
 		fallthrough
 	case "show":
 		var pattern string
 		err = parseCmdArgs(mode, cmdArgs, &pattern)
-		checkErr(err, "")
+		if err != nil {
+			fatalErr(err, "")
+		}
 
-		items, err := lookupItems(&vault, pattern)
-		checkErr(err, "Unable to lookup items")
+		items, err := lookupItems(vault, pattern)
+		if err != nil {
+			fatalErr(err, "Unable to lookup items")
+		}
 
 		if len(items) == 0 {
 			fmt.Fprintf(os.Stderr, "No matching items\n")
@@ -997,74 +925,190 @@ to specify an existing vault or '%s new <path>' to create a new one
 		var itemType string
 		var title string
 		err = parseCmdArgs(mode, cmdArgs, &itemType, &title)
-		checkErr(err, "")
+		if err != nil {
+			fatalErr(err, "")
+		}
 
-		err = addItem(&vault, title, itemType)
+		err = addItem(vault, title, itemType)
 		if err != nil {
 			fatalErr(err, "Unable to add item")
 		}
 	case "update":
 		var pattern string
 		err = parseCmdArgs(mode, cmdArgs, &pattern)
-		checkErr(err, "")
-		updateItem(&vault, pattern)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		updateItem(vault, pattern)
 
 	case "remove":
 		var pattern string
 		err = parseCmdArgs(mode, cmdArgs, &pattern)
-		checkErr(err, "")
-		removeItems(&vault, pattern)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		removeItems(vault, pattern)
 
 	case "trash":
 		var pattern string
 		err = parseCmdArgs(mode, cmdArgs, &pattern)
-		checkErr(err, "")
-		trashItems(&vault, pattern)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		trashItems(vault, pattern)
 
 	case "restore":
 		var pattern string
 		err = parseCmdArgs(mode, cmdArgs, &pattern)
-		checkErr(err, "")
-		restoreItems(&vault, pattern)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		restoreItems(vault, pattern)
 
 	case "rename":
 		var pattern string
 		var newTitle string
 		err = parseCmdArgs(mode, cmdArgs, &pattern, &newTitle)
-		checkErr(err, "")
-		renameItem(&vault, pattern, newTitle)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		renameItem(vault, pattern, newTitle)
 
 	case "copy":
 		var pattern string
 		var field string
 		err = parseCmdArgs(mode, cmdArgs, &pattern, &field)
-		checkErr(err, "")
-		copyToClipboard(&vault, pattern, field)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		copyToClipboard(vault, pattern, field)
 
 	case "import":
 		var path string
 		err = parseCmdArgs(mode, cmdArgs, &path)
-		checkErr(err, "")
-		importItem(&vault, path)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		importItem(vault, path)
 
 	case "export":
 		var pattern string
 		var path string
 		err = parseCmdArgs(mode, cmdArgs, &pattern, &path)
-		checkErr(err, "")
-		exportItem(&vault, pattern, path)
-
-	case "set-password":
-		setPassword(&vault, string(masterPwd))
+		if err != nil {
+			fatalErr(err, "")
+		}
+		exportItem(vault, pattern, path)
 
 	case "export-item-templates":
 		var pattern string
 		err = parseCmdArgs(mode, cmdArgs, &pattern)
-		checkErr(err, "")
-		exportItemTemplates(&vault, pattern)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		exportItemTemplates(vault, pattern)
 
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", mode)
 		os.Exit(1)
+	}
+}
+
+func initVaultConfig(config *clientConfig) {
+	keyChains := findKeyChainDirs()
+	if len(keyChains) == 0 {
+		fmt.Fprintf(os.Stderr,
+			`Unable to locate a 1Password vault automatically, use '%s set-vault <path>'
+to specify an existing vault or '%s new <path>' to create a new one
+`, os.Args[0], os.Args[0])
+		os.Exit(1)
+	}
+	config.VaultDir = keyChains[0]
+	fmt.Printf("Using the password vault in '%s'\n", config.VaultDir)
+	writeConfig(config)
+}
+
+func main() {
+	flag.Usage = func() {
+		printHelp("")
+	}
+	flag.Parse()
+	config := readConfig()
+
+	if len(flag.Args()) < 1 || flag.Args()[0] == "help" {
+		command := ""
+		if len(flag.Args()) > 1 {
+			command = flag.Args()[1]
+		}
+		printHelp(command)
+		os.Exit(1)
+	}
+
+	mode := flag.Args()[0]
+	cmdArgs := flag.Args()[1:]
+
+	// handle commands which do not require
+	// an existing vault
+	handled := true
+	switch mode {
+	case "new":
+		var path string
+		_ = parseCmdArgs(mode, cmdArgs, &path)
+		if len(path) == 0 {
+			path = os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain"
+		}
+		fmt.Printf("Creating new vault in '%s'\n", path)
+		createNewVault(path)
+	case "gen-password":
+		fmt.Printf("%s\n", genDefaultPassword())
+	case "set-vault":
+		var newPath string
+		_ = parseCmdArgs(mode, cmdArgs, &newPath)
+		config.VaultDir = newPath
+		writeConfig(&config)
+	default:
+		handled = false
+	}
+	if handled {
+		return
+	}
+
+	// handle commands which require a connected but not
+	// unlocked vault
+	if config.VaultDir == "" {
+		initVaultConfig(&config)
+	}
+	vault, err := OpenVault(config.VaultDir)
+	if err != nil {
+		fatalErr(err, "Unable to setup vault")
+	}
+
+	if mode == "info" {
+		fmt.Printf("Vault path: %s\n", config.VaultDir)
+		return
+	}
+
+	// remaining commands require an unlocked vault
+	fmt.Printf("Master password: ")
+	masterPwd, err := terminal.ReadPassword(0)
+	if err != nil {
+		os.Exit(1)
+	}
+	fmt.Println()
+
+	err = vault.Unlock(string(masterPwd))
+	if err != nil {
+		if _, isPassError := err.(DecryptError); isPassError {
+			fmt.Printf("Unable to unlock vault using the given password\n")
+		} else {
+			fmt.Printf("Unable to unlock vault: %v\n", err)
+		}
+		os.Exit(1)
+	}
+
+	if mode == "set-password" {
+		setPassword(&vault, string(masterPwd))
+	} else {
+		handleVaultCmd(&vault, mode, cmdArgs)
 	}
 }
