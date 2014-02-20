@@ -29,13 +29,43 @@ const AesBlockLen = 16
 
 var PbkdfIterations = 17094
 
+type KeyDict map[string][]byte
+
+type CryptoAgent interface {
+	Encrypt(keyName string, in []byte) ([]byte, error)
+	Decrypt(keyName string, in []byte) ([]byte, error)
+	Lock() error
+	IsLocked() (bool, error)
+}
+
+// default CryptoAgent implementation
+type simpleCryptoAgent struct {
+	keys KeyDict
+}
+
+func (agent *simpleCryptoAgent) Encrypt(keyName string, in []byte) ([]byte, error) {
+	data, err := EncryptItemData(agent.keys[keyName], in)
+	return data, err
+}
+
+func (agent *simpleCryptoAgent) Decrypt(keyName string, in []byte) ([]byte, error) {
+	data, err := DecryptItemData(agent.keys[keyName], in)
+	return data, err
+}
+
+func (agent *simpleCryptoAgent) Lock() error {
+	agent.keys = nil
+	return nil
+}
+
+func (agent *simpleCryptoAgent) IsLocked() (bool, error) {
+	return agent.keys == nil, nil
+}
+
 // Represents a 1Password vault
 type Vault struct {
-	Path string
-
-	// map from security level ->
-	// decryption key
-	keys map[string][]byte
+	Path        string
+	CryptoAgent CryptoAgent
 }
 
 type DecryptError error
@@ -171,7 +201,7 @@ func NewVault(vaultPath string, security VaultSecurity) (Vault, error) {
 		return Vault{}, fmt.Errorf("Vault %s already exists", vaultPath)
 	}
 
-	dataDir := vaultPath + "/data/default"
+	dataDir := vaultDataDir(vaultPath)
 	err = os.MkdirAll(dataDir, os.ModeDir|0755)
 	if err != nil {
 		return Vault{}, err
@@ -205,7 +235,7 @@ func NewVault(vaultPath string, security VaultSecurity) (Vault, error) {
 	}
 	err = saveEncryptionKeys(dataDir, keyList)
 	return Vault{
-		Path: dataDir,
+		Path: vaultPath,
 	}, nil
 }
 
@@ -218,40 +248,63 @@ func OpenVault(vaultPath string) (Vault, error) {
 	}
 
 	return Vault{
-		Path: vaultPath + "/data/default",
+		Path: vaultPath,
 	}, nil
+}
+
+func vaultDataDir(vaultPath string) string {
+	return vaultPath + "/data/default"
+}
+
+func (vault *Vault) DataDir() string {
+	return vaultDataDir(vault.Path)
+}
+
+func UnlockKeys(vaultPath string, pwd string) (KeyDict, error) {
+	var keyList encryptionKeys
+	err := jsonutil.ReadFile(vaultDataDir(vaultPath)+"/encryptionKeys.js", &keyList)
+	if err != nil {
+		return KeyDict{}, errors.New("Failed to read encryption key file")
+	}
+
+	keys := KeyDict{}
+	for _, entry := range keyList.List {
+		if len(entry.Data) != 1056 {
+			return KeyDict{}, fmt.Errorf("Unexpected encrypted key length: %d", len(entry.Data))
+		}
+
+		salt, encryptedKey, err := extractSaltAndCipherText(entry.Data)
+		if err != nil {
+			return KeyDict{}, fmt.Errorf("Invalid encrypted data: %v", err)
+		}
+		decryptedKey, err := decryptKey([]byte(pwd), encryptedKey, salt, entry.Iterations, entry.Validation)
+		if err != nil {
+			return KeyDict{}, DecryptError(fmt.Errorf("Failed to decrypt main key: %v", err))
+		}
+		keys[entry.Level] = decryptedKey
+	}
+
+	return keys, nil
 }
 
 // Decrypts the master encryption key for the vault using
 // the given master password. Item contents can then be decrypted
 // and items can be added or updated
 func (vault *Vault) Unlock(pwd string) error {
-	var keyList encryptionKeys
-	err := jsonutil.ReadFile(vault.Path+"/encryptionKeys.js", &keyList)
-	if err != nil {
-		return errors.New("Failed to read encryption key file")
-	}
-
-	keys := map[string][]byte{}
-	for _, entry := range keyList.List {
-		if len(entry.Data) != 1056 {
-			return fmt.Errorf("Unexpected encrypted key length: %d", len(entry.Data))
-		}
-
-		salt, encryptedKey := extractSaltAndCipherText(entry.Data)
-		decryptedKey, err := decryptKey([]byte(pwd), encryptedKey, salt, entry.Iterations, entry.Validation)
-		if err != nil {
-			return DecryptError(fmt.Errorf("Failed to decrypt main key: %v", err))
-		}
-		keys[entry.Level] = decryptedKey
-	}
-	vault.keys = keys
-
-	return nil
+	keys, err := UnlockKeys(vault.Path, pwd)
+	vault.CryptoAgent = &simpleCryptoAgent{keys}
+	return err
 }
 
 func (vault *Vault) IsLocked() bool {
-	return vault.keys == nil
+	if vault.CryptoAgent == nil {
+		return true
+	}
+	locked, err := vault.CryptoAgent.IsLocked()
+	if err != nil {
+		fmt.Printf("Failed to check vault lock status: %v\n", err)
+	}
+	return locked || err != nil
 }
 
 // Discards encryption keys stored in memory
@@ -259,7 +312,9 @@ func (vault *Vault) IsLocked() bool {
 // item content can only be retrieved once
 // Unlock() has been used again
 func (vault *Vault) Lock() {
-	vault.keys = nil
+	if vault.CryptoAgent != nil {
+		vault.CryptoAgent.Lock()
+	}
 }
 
 func saveEncryptionKeys(dataDir string, keyList encryptionKeys) (err error) {
@@ -276,7 +331,7 @@ func saveEncryptionKeys(dataDir string, keyList encryptionKeys) (err error) {
 // using the new password
 func (vault *Vault) SetMasterPassword(currentPwd string, newPwd string) error {
 	var keyList encryptionKeys
-	keyFilePath := vault.Path + "/encryptionKeys.js"
+	keyFilePath := vault.DataDir() + "/encryptionKeys.js"
 	err := jsonutil.ReadFile(keyFilePath, &keyList)
 	if err != nil {
 		return errors.New("Failed to read encryption key file")
@@ -286,7 +341,10 @@ func (vault *Vault) SetMasterPassword(currentPwd string, newPwd string) error {
 		if len(entry.Data) != 1056 {
 			return fmt.Errorf("Unexpected encrypted key length: %d", len(entry.Data))
 		}
-		salt, encryptedKey := extractSaltAndCipherText(entry.Data)
+		salt, encryptedKey, err := extractSaltAndCipherText(entry.Data)
+		if err != nil {
+			return fmt.Errorf("Invalid encrypted key: %v", err)
+		}
 		decryptedKey, err := decryptKey([]byte(currentPwd), encryptedKey, salt, entry.Iterations, entry.Validation)
 		if err != nil {
 			return fmt.Errorf("Failed to decrypt main key: %v", err)
@@ -304,7 +362,7 @@ func (vault *Vault) SetMasterPassword(currentPwd string, newPwd string) error {
 		keyList.List[i] = entry
 	}
 
-	err = saveEncryptionKeys(vault.Path, keyList)
+	err = saveEncryptionKeys(vault.DataDir(), keyList)
 	if err != nil {
 		return fmt.Errorf("Failed to save updated keys: %v", err)
 	}
@@ -354,7 +412,7 @@ func (item *Item) removeDataFiles() error {
 	itemDataFile := item.Path()
 
 	// remove contents.js entry
-	contentsFilePath := item.vault.Path + "/contents.js"
+	contentsFilePath := item.vault.DataDir() + "/contents.js"
 	var contentsEntries [][]interface{}
 	err := jsonutil.ReadFile(contentsFilePath, &contentsEntries)
 	if err != nil {
@@ -426,7 +484,7 @@ func readContentsEntry(entry []interface{}) Item {
 // Returns the path of the file containing
 // this item.
 func (item *Item) Path() string {
-	return item.vault.Path + "/" + item.Uuid + ".1password"
+	return item.vault.DataDir() + "/" + item.Uuid + ".1password"
 }
 
 // Save item to the vault. The item's UpdatedAt
@@ -451,7 +509,7 @@ func (item *Item) Save() error {
 	}
 
 	// update contents.js entry
-	contentsFilePath := item.vault.Path + "/contents.js"
+	contentsFilePath := item.vault.DataDir() + "/contents.js"
 	var contentsEntries [][]interface{}
 	err = jsonutil.ReadFile(contentsFilePath, &contentsEntries)
 	if err != nil {
@@ -481,7 +539,7 @@ func (vault *Vault) LoadItem(uuid string) (Item, error) {
 	item := Item{
 		vault: vault,
 	}
-	err := jsonutil.ReadFile(vault.Path+"/"+uuid+".1password", &item)
+	err := jsonutil.ReadFile(vault.DataDir()+"/"+uuid+".1password", &item)
 	if err != nil {
 		return Item{}, err
 	}
@@ -492,14 +550,14 @@ func (vault *Vault) LoadItem(uuid string) (Item, error) {
 // Returned items have their main content still encrypted
 func (vault *Vault) ListItems() ([]Item, error) {
 	items := []Item{}
-	dirEntries, err := ioutil.ReadDir(vault.Path)
+	dirEntries, err := ioutil.ReadDir(vault.DataDir())
 	if err != nil {
 		return items, err
 	}
 	for _, item := range dirEntries {
 		if path.Ext(item.Name()) == ".1password" {
 			itemData := Item{vault: vault}
-			err := jsonutil.ReadFile(vault.Path+"/"+item.Name(), &itemData)
+			err := jsonutil.ReadFile(vault.DataDir()+"/"+item.Name(), &itemData)
 			if err != nil {
 				fmt.Printf("Failed to read item: %s: %v\n", item.Name(), err)
 			} else if itemData.TypeName != "system.Tombstone" {
@@ -519,17 +577,11 @@ func (item *Item) ContentJson() (string, error) {
 	if len(item.Encrypted) < 16 {
 		return "", errors.New("No item data")
 	}
-	itemKey, ok := item.vault.keys[item.SecurityLevel]
-	if !ok {
-		return "", errors.New("No decryption key found for item")
-	}
-	salt, cipherText := extractSaltAndCipherText(item.Encrypted)
-	key, iv := openSslKey(itemKey, salt)
-	decryptedData, err := aesCbcDecrypt(key, cipherText, iv)
+	decrypted, err := item.vault.CryptoAgent.Decrypt(item.SecurityLevel, item.Encrypted)
 	if err != nil {
 		return "", fmt.Errorf("Failed to decrypt item: %v", err)
 	}
-	return string(decryptedData), nil
+	return string(decrypted), nil
 }
 
 // Decrypts and returns the content of the item
@@ -594,18 +646,31 @@ func (item *Item) SetContentJson(content string) error {
 	if item.vault.IsLocked() {
 		return errors.New("Vault is locked")
 	}
-	itemKey, ok := item.vault.keys[item.SecurityLevel]
-	if !ok {
-		return errors.New("No encryption key found for item")
-	}
-	salt := randomBytes(8)
-	key, iv := openSslKey(itemKey, salt)
-	encryptedData, err := aesCbcEncrypt(key, []byte(content), iv)
+	item.Encrypted, err = item.vault.CryptoAgent.Encrypt(item.SecurityLevel, []byte(content))
 	if err != nil {
 		return fmt.Errorf("Failed to encrypt item: %v", err)
 	}
-	item.Encrypted = []byte(fmt.Sprintf("%s%s%s", "Salted__", salt, encryptedData))
 	return nil
+}
+
+func EncryptItemData(itemKey []byte, data []byte) ([]byte, error) {
+	salt := randomBytes(8)
+	key, iv := openSslKey(itemKey, salt)
+	encryptedData, err := aesCbcEncrypt(key, data, iv)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(fmt.Sprintf("%s%s%s", "Salted__", salt, encryptedData)), nil
+}
+
+func DecryptItemData(itemKey []byte, data []byte) ([]byte, error) {
+	salt, cipherText, err := extractSaltAndCipherText(data)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid encrypted item data: %v", err)
+	}
+	key, iv := openSslKey(itemKey, salt)
+	decryptedData, err := aesCbcDecrypt(key, cipherText, iv)
+	return decryptedData, err
 }
 
 // Returns the user-presentable description
@@ -694,12 +759,11 @@ func randomBytes(count int) []byte {
 	return data
 }
 
-func extractSaltAndCipherText(data []byte) ([]byte, []byte) {
-	if string(data[0:8]) == "Salted__" {
-		return data[8:16], data[16:]
-	} else {
-		return nil, data
+func extractSaltAndCipherText(data []byte) ([]byte, []byte, error) {
+	if len(data) < 16 {
+		return nil, nil, fmt.Errorf("Ciphertext missing salt")
 	}
+	return data[8:16], data[16:], nil
 }
 
 func encryptKey(masterPwd []byte, decryptedKey []byte, salt []byte, iterCount int) ([]byte, []byte, error) {
@@ -734,7 +798,10 @@ func decryptKey(masterPwd []byte, encryptedKey []byte, salt []byte, iterCount in
 		return nil, err
 	}
 
-	validationSalt, validationCipherText := extractSaltAndCipherText(validation)
+	validationSalt, validationCipherText, err := extractSaltAndCipherText(validation)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid validation: %v", err)
+	}
 
 	validationAesKey, validationIv := openSslKey(decryptedKey, validationSalt)
 	decryptedValidation, err := aesCbcDecrypt(validationAesKey, validationCipherText, validationIv)

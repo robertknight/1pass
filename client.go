@@ -1038,11 +1038,28 @@ to specify an existing vault or '%s new <path>' to create a new one
 	writeConfig(config)
 }
 
+func startAgent() error {
+	agentCmd := exec.Command(os.Args[0], "-agent")
+	err := agentCmd.Start()
+	return err
+}
+
 func main() {
+	agentFlag := flag.Bool("agent", false, "Start 1pass in agent mode")
 	flag.Usage = func() {
 		printHelp("")
 	}
 	flag.Parse()
+
+	if *agentFlag {
+		agent := NewAgent()
+		err := agent.Serve()
+		if err != nil {
+			fatalErr(err, "")
+		}
+		return
+	}
+
 	config := readConfig()
 
 	if len(flag.Args()) < 1 || flag.Args()[0] == "help" {
@@ -1099,26 +1116,64 @@ func main() {
 	}
 
 	// remaining commands require an unlocked vault
-	fmt.Printf("Master password: ")
-	masterPwd, err := terminal.ReadPassword(0)
+	agentClient, err := DialAgent(config.VaultDir)
 	if err != nil {
-		os.Exit(1)
-	}
-	fmt.Println()
-
-	err = vault.Unlock(string(masterPwd))
-	if err != nil {
-		if _, isPassError := err.(onepass.DecryptError); isPassError {
-			fmt.Printf("Unable to unlock vault using the given password\n")
-		} else {
-			fmt.Printf("Unable to unlock vault: %v\n", err)
+		err = startAgent()
+		if err != nil {
+			fatalErr(err, "Unable to start 1pass keychain agent")
 		}
-		os.Exit(1)
+		maxWait := time.Now().Add(1 * time.Second)
+		for time.Now().Before(maxWait) {
+			agentClient, err = DialAgent(config.VaultDir)
+			if err == nil {
+				break
+			} else {
+				fmt.Errorf("Error starting agent: %v\n", err)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		if err != nil {
+			fatalErr(err, "Unable to connect to 1pass keychain agent")
+		}
+	}
+
+	if mode == "lock" {
+		err = agentClient.Lock()
+		if err != nil {
+			fatalErr(err, "Failed to lock keychain")
+		}
+		return
 	}
 
 	if mode == "set-password" {
+		fmt.Printf("Current master password: ")
+		masterPwd, err := terminal.ReadPassword(0)
+		if err != nil {
+			os.Exit(1)
+		}
+		fmt.Println()
 		setPassword(&vault, string(masterPwd))
-	} else {
-		handleVaultCmd(&vault, mode, cmdArgs)
+		return
 	}
+
+	var masterPwd []byte
+	locked, err := agentClient.IsLocked()
+	if err != nil {
+		fatalErr(err, "Failed to check lock status")
+	}
+	if locked {
+		fmt.Printf("Master password: ")
+		masterPwd, err = terminal.ReadPassword(0)
+		if err != nil {
+			os.Exit(1)
+		}
+		fmt.Println()
+
+		err = agentClient.Unlock(string(masterPwd))
+		if err != nil {
+			fatalErr(err, "Unable to unlock vault")
+		}
+	}
+	vault.CryptoAgent = &agentClient
+	handleVaultCmd(&vault, mode, cmdArgs)
 }
