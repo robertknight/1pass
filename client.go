@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"code.google.com/p/go.crypto/ssh/terminal"
@@ -1116,8 +1117,24 @@ func main() {
 	}
 
 	// remaining commands require an unlocked vault
+
+	// connect to the 1pass agent daemon. Start it automatically
+	// if not already running or the agent/client version do not
+	// match
+
 	agentClient, err := DialAgent(config.VaultDir)
-	if err != nil {
+	if err == nil && agentClient.Info.Version != appVersion() {
+		if agentClient.Info.Pid != 0 {
+			fmt.Fprintf(os.Stderr, "Agent/client version mismatch. Restarting agent.\n")
+			// kill the existing agent
+			err = syscall.Kill(agentClient.Info.Pid, syscall.SIGINT)
+			if err != nil {
+				fatalErr(err, "Failed to shut down existing agent")
+			}
+			agentClient = OnePassAgentClient{}
+		}
+	}
+	if agentClient.Info.Pid == 0 {
 		err = startAgent()
 		if err != nil {
 			fatalErr(err, "Unable to start 1pass keychain agent")
@@ -1161,6 +1178,7 @@ func main() {
 	if err != nil {
 		fatalErr(err, "Failed to check lock status")
 	}
+
 	if locked {
 		fmt.Printf("Master password: ")
 		masterPwd, err = terminal.ReadPassword(0)

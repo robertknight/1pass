@@ -12,6 +12,7 @@ import (
 
 var agentConnType = "unix"
 var agentConnAddr = os.ExpandEnv("$HOME/.1pass.sock")
+var agentVersion = appVersion()
 
 type OnePassAgent struct {
 	rpcServer rpc.Server
@@ -21,6 +22,7 @@ type OnePassAgent struct {
 type OnePassAgentClient struct {
 	rpcClient *rpc.Client
 	VaultPath string
+	Info      AgentInfo
 }
 
 type CryptArgs struct {
@@ -33,6 +35,23 @@ type UnlockArgs struct {
 	VaultPath   string
 	MasterPwd   string
 	ExpireAfter time.Duration
+}
+
+type AgentInfo struct {
+	Version string
+	Pid     int
+}
+
+// returns the app version - the last-modified
+// date of the app binary is used so that the
+// agent is auto-restarted when running the client
+// after updating the app binary
+func appVersion() string {
+	binInfo, err := os.Stat(os.Args[0])
+	if err != nil {
+		return "Unknown"
+	}
+	return binInfo.ModTime().Format(time.RFC3339)
 }
 
 func NewAgent() OnePassAgent {
@@ -85,6 +104,14 @@ func (agent *OnePassAgent) Lock(vaultPath string, ok *bool) error {
 
 func (agent *OnePassAgent) IsLocked(vaultPath string, locked *bool) error {
 	*locked = agent.keys[vaultPath] == nil
+	return nil
+}
+
+func (agent *OnePassAgent) Info(unused string, info *AgentInfo) error {
+	*info = AgentInfo{
+		Pid:     os.Getpid(),
+		Version: agentVersion,
+	}
 	return nil
 }
 
@@ -147,13 +174,28 @@ func (client *OnePassAgentClient) IsLocked() (bool, error) {
 	return locked, nil
 }
 
+func (client *OnePassAgentClient) AgentInfo() (AgentInfo, error) {
+	var info AgentInfo
+	err := client.rpcClient.Call("OnePassAgent.Info", "" /* unused */, &info)
+	if err != nil {
+		return AgentInfo{}, err
+	}
+	return info, nil
+}
+
 func DialAgent(vaultPath string) (OnePassAgentClient, error) {
 	rpcClient, err := rpc.Dial(agentConnType, agentConnAddr)
 	if err != nil {
 		return OnePassAgentClient{}, err
 	}
-	return OnePassAgentClient{
+	client := OnePassAgentClient{
 		rpcClient: rpcClient,
 		VaultPath: vaultPath,
-	}, nil
+	}
+	agentInfo, err := client.AgentInfo()
+	if err != nil {
+		return OnePassAgentClient{}, err
+	}
+	client.Info = agentInfo
+	return client, nil
 }
