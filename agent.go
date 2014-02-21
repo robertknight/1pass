@@ -90,7 +90,7 @@ func (agent *OnePassAgent) IsLocked(vaultPath string, locked *bool) error {
 
 func (agent *OnePassAgent) Serve() error {
 	err := os.Remove(agentConnAddr)
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	rpcServer := rpc.NewServer()
