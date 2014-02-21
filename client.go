@@ -1123,7 +1123,7 @@ func main() {
 	// match
 
 	agentClient, err := DialAgent(config.VaultDir)
-	if err == nil && agentClient.Info.Version != appVersion() {
+	if err == nil && agentClient.Info.BinaryVersion != appBinaryVersion() {
 		if agentClient.Info.Pid != 0 {
 			fmt.Fprintf(os.Stderr, "Agent/client version mismatch. Restarting agent.\n")
 			// kill the existing agent

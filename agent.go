@@ -12,7 +12,7 @@ import (
 
 var agentConnType = "unix"
 var agentConnAddr = os.ExpandEnv("$HOME/.1pass.sock")
-var agentVersion = appVersion()
+var agentBinaryVersion = appBinaryVersion()
 
 type OnePassAgent struct {
 	rpcServer rpc.Server
@@ -38,20 +38,16 @@ type UnlockArgs struct {
 }
 
 type AgentInfo struct {
-	Version string
-	Pid     int
+	BinaryVersion time.Time
+	Pid           int
 }
 
-// returns the app version - the last-modified
-// date of the app binary is used so that the
-// agent is auto-restarted when running the client
-// after updating the app binary
-func appVersion() string {
+func appBinaryVersion() time.Time {
 	binInfo, err := os.Stat(os.Args[0])
 	if err != nil {
-		return "Unknown"
+		return time.Time{}
 	}
-	return binInfo.ModTime().Format(time.RFC3339)
+	return binInfo.ModTime()
 }
 
 func NewAgent() OnePassAgent {
@@ -109,8 +105,8 @@ func (agent *OnePassAgent) IsLocked(vaultPath string, locked *bool) error {
 
 func (agent *OnePassAgent) Info(unused string, info *AgentInfo) error {
 	*info = AgentInfo{
-		Pid:     os.Getpid(),
-		Version: agentVersion,
+		Pid:           os.Getpid(),
+		BinaryVersion: agentBinaryVersion,
 	}
 	return nil
 }
