@@ -62,12 +62,12 @@ func (agent *OnePassAgent) Decrypt(args CryptArgs, plainText *[]byte) error {
 }
 
 func (agent *OnePassAgent) Unlock(args UnlockArgs, ok *bool) error {
-	var err error
-	agent.keys[args.VaultPath], err = onepass.UnlockKeys(args.VaultPath, args.MasterPwd)
+	keys, err := onepass.UnlockKeys(args.VaultPath, args.MasterPwd)
 	if err != nil {
 		return err
 		*ok = false
 	}
+	agent.keys[args.VaultPath] = keys
 	time.AfterFunc(args.ExpireAfter, func() {
 		// TODO - Safety
 		ok := false
