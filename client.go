@@ -190,7 +190,10 @@ func findKeyChainDirs() []string {
 		os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain",
 	}
 	for _, defaultPath := range defaultPaths {
-		if !sliceContains(paths, defaultPath) {
+		ok := rangeContains(0, len(paths), func(i int) bool {
+			return paths[i] == defaultPath
+		})
+		if ok {
 			err = onepass.CheckVault(defaultPath)
 			if err == nil {
 				paths = append(paths, defaultPath)
@@ -216,9 +219,12 @@ func listItems(vault *onepass.Vault, pattern string) {
 		os.Exit(1)
 	}
 
-	sortSlice(items, func(a, b interface{}) bool {
-		return strings.ToLower(a.(onepass.Item).Title) < strings.ToLower(b.(onepass.Item).Title)
-	})
+	sortRange(0, len(items), func(i, k int) bool {
+		return strings.ToLower(items[i].Title) < strings.ToLower(items[k].Title)
+	},
+		func(i, k int) {
+			items[i], items[k] = items[k], items[i]
+		})
 
 	for _, item := range items {
 		trashState := ""
@@ -582,9 +588,12 @@ func printHelp(cmd string) {
 		fmt.Fprintf(os.Stderr, "Supported commands:\n\n")
 
 		sortedCommands := append([]commandMode{}, commandModes...)
-		sortSlice(sortedCommands, func(a, b interface{}) bool {
-			return a.(commandMode).command < b.(commandMode).command
-		})
+		sortRange(0, len(sortedCommands), func(i, k int) bool {
+			return sortedCommands[i].command < sortedCommands[k].command
+		},
+			func(i, k int) {
+				sortedCommands[i], sortedCommands[k] = sortedCommands[k], sortedCommands[i]
+			})
 
 		// maximum width for command names before
 		// description is moved onto next line
