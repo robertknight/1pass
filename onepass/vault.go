@@ -33,14 +33,25 @@ const agileKeychainKeyLen = 1024
 
 type KeyDict map[string][]byte
 
+// CryptoAgent is an interface used by Vault and Item
+// to encrypt and decrypt the content for items
 type CryptoAgent interface {
+	// Encrypt the data for a single item using the named key
 	Encrypt(keyName string, in []byte) ([]byte, error)
+
+	// Decrypt the data for a single item using the named key
 	Decrypt(keyName string, in []byte) ([]byte, error)
+
+	// Forget any decrypted keys. Subsequent calls to IsLocked()
+	// should return true
 	Lock() error
+
+	// Test whether the vault has been unlocked
 	IsLocked() (bool, error)
 }
 
-// default CryptoAgent implementation
+// default CryptoAgent implementation which just
+// stores decrypted keys in memory
 type simpleCryptoAgent struct {
 	keys KeyDict
 }
@@ -258,10 +269,16 @@ func vaultDataDir(vaultPath string) string {
 	return vaultPath + "/data/default"
 }
 
+// DataDir returns the path to the folder containing
+// encrypted items in the vault
 func (vault *Vault) DataDir() string {
 	return vaultDataDir(vault.Path)
 }
 
+// UnlockKeys decrypts the item encryption keys for
+// a vault using the master password and returns a dictionary
+// mapping key name to key data or an instance of DecryptError
+// if the password is wrong
 func UnlockKeys(vaultPath string, pwd string) (KeyDict, error) {
 	var keyList encryptionKeys
 	err := jsonutil.ReadFile(vaultDataDir(vaultPath)+"/encryptionKeys.js", &keyList)
@@ -298,6 +315,9 @@ func (vault *Vault) Unlock(pwd string) error {
 	return err
 }
 
+// IsLocked returns true if the vault is currently locked,
+// ie. the keys needed to encrypt/decrypt items have
+// not been decrypted using Unlock()
 func (vault *Vault) IsLocked() bool {
 	if vault.CryptoAgent == nil {
 		return true
@@ -655,6 +675,8 @@ func (item *Item) SetContentJson(content string) error {
 	return nil
 }
 
+// Encrypts the data for an item using a given key.
+// This is provided as a helper for CryptoAgent implementations.
 func EncryptItemData(itemKey []byte, data []byte) ([]byte, error) {
 	if len(itemKey) != agileKeychainKeyLen {
 		return nil, fmt.Errorf("unexpected item key length %d, expected %d", len(itemKey), agileKeychainKeyLen)
@@ -668,6 +690,8 @@ func EncryptItemData(itemKey []byte, data []byte) ([]byte, error) {
 	return []byte(fmt.Sprintf("%s%s%s", "Salted__", salt, encryptedData)), nil
 }
 
+// Decrypts the data for an item using a given key.
+// This is provided as a helpre for CryptoAgent implementations.
 func DecryptItemData(itemKey []byte, data []byte) ([]byte, error) {
 	if len(itemKey) != agileKeychainKeyLen {
 		return nil, fmt.Errorf("unexpected item key length %d, expected %d", len(itemKey), agileKeychainKeyLen)
