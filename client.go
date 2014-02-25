@@ -1201,6 +1201,10 @@ func main() {
 			fatalErr(err, "Unable to unlock vault")
 		}
 	}
+	err = agentClient.RefreshAccess()
+	if err != nil {
+		fatalErr(err, "Unable to refresh vault access")
+	}
 	vault.CryptoAgent = &agentClient
 	handleVaultCmd(&vault, mode, cmdArgs)
 }

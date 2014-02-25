@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"log"
 	"net"
 	"net/rpc"
 	"os"
@@ -15,11 +16,21 @@ var agentConnType = "unix"
 var agentConnAddr = os.ExpandEnv("$HOME/.1pass.sock")
 var agentBinaryVersion = appBinaryVersion()
 
+const defaultUnlockDelay = 2 * time.Minute
+
+type vaultData struct {
+	keys     onepass.KeyDict
+	autoLock *time.Timer
+}
+
+// OnePassAgent is an RPC service for temporarily
+// storing keys for unlocked vaults and providing
+// functions to encrypt and decrypt item data.
 type OnePassAgent struct {
 	rpcServer rpc.Server
 
-	mu   sync.Mutex // protects `keys`
-	keys map[string]onepass.KeyDict
+	mu     sync.Mutex // protects `vaults`
+	vaults map[string]vaultData
 }
 
 type OnePassAgentClient struct {
@@ -40,6 +51,11 @@ type UnlockArgs struct {
 	ExpireAfter time.Duration
 }
 
+type RefreshArgs struct {
+	VaultPath   string
+	ExpireAfter time.Duration
+}
+
 type AgentInfo struct {
 	BinaryVersion time.Time
 	Pid           int
@@ -55,15 +71,22 @@ func appBinaryVersion() time.Time {
 
 func NewAgent() OnePassAgent {
 	return OnePassAgent{
-		keys: map[string]onepass.KeyDict{},
+		vaults: map[string]vaultData{},
 	}
 }
 
+// Encrypt encrypts data for storage in an item in a 1Password vault
+// The vault must previously have been unlocked using an Unlock() call
 func (agent *OnePassAgent) Encrypt(args CryptArgs, cipherText *[]byte) error {
 	agent.mu.Lock()
 	defer agent.mu.Unlock()
 
-	itemKey, ok := agent.keys[args.VaultPath][args.KeyName]
+	vaultData, ok := agent.vaults[args.VaultPath]
+	if !ok {
+		return errors.New("No such vault")
+	}
+
+	itemKey, ok := vaultData.keys[args.KeyName]
 	if !ok {
 		return errors.New("No such key")
 	}
@@ -76,7 +99,11 @@ func (agent *OnePassAgent) Decrypt(args CryptArgs, plainText *[]byte) error {
 	agent.mu.Lock()
 	defer agent.mu.Unlock()
 
-	itemKey, ok := agent.keys[args.VaultPath][args.KeyName]
+	vaultData, ok := agent.vaults[args.VaultPath]
+	if !ok {
+		return errors.New("No such vault")
+	}
+	itemKey, ok := vaultData.keys[args.KeyName]
 	if !ok {
 		return errors.New("No such key")
 	}
@@ -91,15 +118,22 @@ func (agent *OnePassAgent) Unlock(args UnlockArgs, ok *bool) error {
 
 	keys, err := onepass.UnlockKeys(args.VaultPath, args.MasterPwd)
 	if err != nil {
+		log.Printf("Unlocking '%s' failed: %v", args.VaultPath, err)
 		return err
 		*ok = false
 	}
-	agent.keys[args.VaultPath] = keys
-	time.AfterFunc(args.ExpireAfter, func() {
-		// TODO - Safety
+	autoLock := time.AfterFunc(args.ExpireAfter, func() {
+		log.Printf("Auto-locking vault '%s'", args.VaultPath)
 		ok := false
 		agent.Lock(args.VaultPath, &ok)
 	})
+	agent.vaults[args.VaultPath] = vaultData{
+		keys:     keys,
+		autoLock: autoLock,
+	}
+
+	log.Printf("Unlocked vault '%s'", args.VaultPath)
+
 	*ok = true
 	return nil
 }
@@ -108,7 +142,7 @@ func (agent *OnePassAgent) Lock(vaultPath string, ok *bool) error {
 	agent.mu.Lock()
 	defer agent.mu.Unlock()
 
-	delete(agent.keys, vaultPath)
+	delete(agent.vaults, vaultPath)
 	*ok = true
 	return nil
 }
@@ -117,7 +151,20 @@ func (agent *OnePassAgent) IsLocked(vaultPath string, locked *bool) error {
 	agent.mu.Lock()
 	defer agent.mu.Unlock()
 
-	*locked = agent.keys[vaultPath] == nil
+	_, unlocked := agent.vaults[vaultPath]
+	*locked = !unlocked
+	return nil
+}
+
+func (agent *OnePassAgent) RefreshAccess(args RefreshArgs, ok *bool) error {
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+
+	vaultData, unlocked := agent.vaults[args.VaultPath]
+	if !unlocked {
+		return errors.New("Vault is not unlocked")
+	}
+	vaultData.autoLock.Reset(args.ExpireAfter)
 	return nil
 }
 
@@ -168,7 +215,7 @@ func (client *OnePassAgentClient) Unlock(masterPwd string) error {
 	err := client.rpcClient.Call("OnePassAgent.Unlock", UnlockArgs{
 		VaultPath:   client.VaultPath,
 		MasterPwd:   masterPwd,
-		ExpireAfter: 45 * time.Second,
+		ExpireAfter: defaultUnlockDelay,
 	}, &ok)
 	return err
 }
@@ -186,6 +233,15 @@ func (client *OnePassAgentClient) IsLocked() (bool, error) {
 		return true, err
 	}
 	return locked, nil
+}
+
+func (client *OnePassAgentClient) RefreshAccess() error {
+	var ok bool
+	err := client.rpcClient.Call("OnePassAgent.RefreshAccess", RefreshArgs{
+		VaultPath:   client.VaultPath,
+		ExpireAfter: defaultUnlockDelay,
+	}, &ok)
+	return err
 }
 
 func (client *OnePassAgentClient) AgentInfo() (AgentInfo, error) {
