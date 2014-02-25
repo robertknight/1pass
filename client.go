@@ -60,6 +60,11 @@ var commandModes = []commandMode{
 		argNames:    []string{"[pattern]"},
 	},
 	{
+		command:     "list-folder",
+		description: "List items in a folder",
+		argNames:    []string{"pattern"},
+	},
+	{
 		command:     "show-json",
 		description: "Show the raw decrypted JSON for the given item",
 		argNames:    []string{"pattern"},
@@ -74,6 +79,11 @@ var commandModes = []commandMode{
 		description: "Add a new item to the vault",
 		argNames:    []string{"type", "title"},
 		extraHelp:   addItemHelp,
+	},
+	{
+		command:     "move",
+		description: "Move items to a folder",
+		argNames:    []string{"item-pattern", "folder-pattern"},
 	},
 	{
 		command:     "update",
@@ -232,6 +242,19 @@ func listItems(vault *onepass.Vault, pattern string) {
 			trashState = " (in trash)"
 		}
 		fmt.Printf("%s (%s, %s)%s\n", item.Title, item.Type(), item.Uuid[0:4], trashState)
+	}
+}
+
+func listFolder(vault *onepass.Vault, pattern string) {
+	folder, err := lookupSingleItem(vault, pattern)
+	if err != nil {
+		fatalErr(err, "Failed to find folder")
+	}
+	items, err := vault.ListItems()
+	for _, item := range items {
+		if item.FolderUuid == folder.Uuid {
+			fmt.Printf("%s\n", item.Title)
+		}
 	}
 }
 
@@ -671,6 +694,25 @@ func setPasswordHelp() string {
 	return setPasswordSyncNote
 }
 
+func moveItemsToFolder(vault *onepass.Vault, itemPattern string, folderPattern string) {
+	items, err := lookupItems(vault, itemPattern)
+	if err != nil {
+		fatalErr(err, "Unable to lookup items to move")
+	}
+
+	var folder onepass.Item
+	if len(folderPattern) > 0 {
+		folder, err = lookupSingleItem(vault, folderPattern)
+	}
+	for _, item := range items {
+		item.FolderUuid = folder.Uuid
+		err = item.Save()
+		if err != nil {
+			fatalErr(err, "Failed to move item to folder")
+		}
+	}
+}
+
 func removeItems(vault *onepass.Vault, pattern string) {
 	items, err := lookupItems(vault, pattern)
 	if err != nil {
@@ -913,6 +955,12 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 		var pattern string
 		parseCmdArgs(mode, cmdArgs, &pattern)
 		listItems(vault, pattern)
+
+	case "list-folder":
+		var pattern string
+		parseCmdArgs(mode, cmdArgs, &pattern)
+		listFolder(vault, pattern)
+
 	case "show-json":
 		fallthrough
 	case "show":
@@ -1027,6 +1075,15 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 			fatalErr(err, "")
 		}
 		exportItemTemplates(vault, pattern)
+
+	case "move":
+		var folderPattern string
+		var itemPattern string
+		err = parseCmdArgs(mode, cmdArgs, &itemPattern, &folderPattern)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		moveItemsToFolder(vault, itemPattern, folderPattern)
 
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", mode)
