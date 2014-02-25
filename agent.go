@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/rpc"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/robertknight/1pass/onepass"
@@ -16,7 +17,9 @@ var agentBinaryVersion = appBinaryVersion()
 
 type OnePassAgent struct {
 	rpcServer rpc.Server
-	keys      map[string]onepass.KeyDict
+
+	mu   sync.Mutex // protects `keys`
+	keys map[string]onepass.KeyDict
 }
 
 type OnePassAgentClient struct {
@@ -57,6 +60,9 @@ func NewAgent() OnePassAgent {
 }
 
 func (agent *OnePassAgent) Encrypt(args CryptArgs, cipherText *[]byte) error {
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+
 	itemKey, ok := agent.keys[args.VaultPath][args.KeyName]
 	if !ok {
 		return errors.New("No such key")
@@ -67,6 +73,9 @@ func (agent *OnePassAgent) Encrypt(args CryptArgs, cipherText *[]byte) error {
 }
 
 func (agent *OnePassAgent) Decrypt(args CryptArgs, plainText *[]byte) error {
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+
 	itemKey, ok := agent.keys[args.VaultPath][args.KeyName]
 	if !ok {
 		return errors.New("No such key")
@@ -77,6 +86,9 @@ func (agent *OnePassAgent) Decrypt(args CryptArgs, plainText *[]byte) error {
 }
 
 func (agent *OnePassAgent) Unlock(args UnlockArgs, ok *bool) error {
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+
 	keys, err := onepass.UnlockKeys(args.VaultPath, args.MasterPwd)
 	if err != nil {
 		return err
@@ -93,12 +105,18 @@ func (agent *OnePassAgent) Unlock(args UnlockArgs, ok *bool) error {
 }
 
 func (agent *OnePassAgent) Lock(vaultPath string, ok *bool) error {
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+
 	delete(agent.keys, vaultPath)
 	*ok = true
 	return nil
 }
 
 func (agent *OnePassAgent) IsLocked(vaultPath string, locked *bool) error {
+	agent.mu.Lock()
+	defer agent.mu.Unlock()
+
 	*locked = agent.keys[vaultPath] == nil
 	return nil
 }
