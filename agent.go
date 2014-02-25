@@ -196,6 +196,7 @@ func (client *OnePassAgentClient) Encrypt(keyName string, in []byte) ([]byte, er
 	err := client.rpcClient.Call("OnePassAgent.Encrypt", CryptArgs{
 		VaultPath: client.VaultPath,
 		KeyName:   keyName,
+		Data:      in,
 	}, &cipherText)
 	return cipherText, err
 }

@@ -29,6 +29,8 @@ const AesBlockLen = 16
 
 var PbkdfIterations = 17094
 
+const agileKeychainKeyLen = 1024
+
 type KeyDict map[string][]byte
 
 type CryptoAgent interface {
@@ -654,6 +656,9 @@ func (item *Item) SetContentJson(content string) error {
 }
 
 func EncryptItemData(itemKey []byte, data []byte) ([]byte, error) {
+	if len(itemKey) != agileKeychainKeyLen {
+		return nil, fmt.Errorf("unexpected item key length %d, expected %d", len(itemKey), agileKeychainKeyLen)
+	}
 	salt := randomBytes(8)
 	key, iv := openSslKey(itemKey, salt)
 	encryptedData, err := aesCbcEncrypt(key, data, iv)
@@ -664,6 +669,9 @@ func EncryptItemData(itemKey []byte, data []byte) ([]byte, error) {
 }
 
 func DecryptItemData(itemKey []byte, data []byte) ([]byte, error) {
+	if len(itemKey) != agileKeychainKeyLen {
+		return nil, fmt.Errorf("unexpected item key length %d, expected %d", len(itemKey), agileKeychainKeyLen)
+	}
 	salt, cipherText, err := extractSaltAndCipherText(data)
 	if err != nil {
 		return nil, fmt.Errorf("Invalid encrypted item data: %v", err)
