@@ -1,5 +1,6 @@
 1pass
 ===============
+[![Build Status](https://travis-ci.org/robertknight/1pass.png?branch=master)](https://travis-ci.org/robertknight/1pass)
 
 A command-line client for [1Password](https://agilebits.com/onepassword).
 
