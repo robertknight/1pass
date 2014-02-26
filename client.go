@@ -203,7 +203,7 @@ func findKeyChainDirs() []string {
 		ok := rangeContains(0, len(paths), func(i int) bool {
 			return paths[i] == defaultPath
 		})
-		if ok {
+		if !ok {
 			err = onepass.CheckVault(defaultPath)
 			if err == nil {
 				paths = append(paths, defaultPath)
