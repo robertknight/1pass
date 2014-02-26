@@ -14,7 +14,7 @@ Supports:
 
 Use one of the official 1Password apps to set up your 1Password vault and enable Dropbox syncing. The client works with the copy of the vault that is synced to Dropbox.
 
-Alternatively, use `1pass new <path>` to create a new vault
+Alternatively, use `1pass new <path>` to create a new vault.
 
 ## Usage:
 `1pass <command> <args>`
