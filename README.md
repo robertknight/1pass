@@ -1,20 +1,20 @@
 1pass
 ===============
 
-A command-line client for 1Password. Works offline but requires Dropbox syncing to be enabled in the official 1Password apps first.
+A command-line client for [1Password](https://agilebits.com/onepassword).
 
 Supports:
  * Creating, opening and changing the master password for vaults
- * Listing, adding and removing items in vaults
+ * Listing, adding, updating and removing items in vaults
  * Decrypting and displaying the contents of items
  * Generating random passwords for new items
+ * Copying item passwords and field values to the clipboard
 
 ## Setup
 
-Use one of the official 1Password apps to set up your 1Password vault
-and enable Dropbox syncing.
+Use one of the official 1Password apps to set up your 1Password vault and enable Dropbox syncing. The client works with the copy of the vault that is synced to Dropbox.
 
-The client works with the copy of the vault that is synced to Dropbox.
+Alternatively, use `1pass new <path>` to create a new vault
 
 ## Usage:
 `1pass <command> <args>`
@@ -29,7 +29,7 @@ to display the syntax for a given command.
 The item(s) which a command applies to are specified with a pattern which is matched against
 the title and ID of the item. For example:
 
-`1pass show _git_`
+`1pass show git`
 
 Will show all entries whose title contains 'git', eg. 'GitHub.com'
 
