@@ -264,8 +264,14 @@ func prettyJson(src []byte) []byte {
 	return buffer.Bytes()
 }
 
-func showItem(item onepass.Item) {
-	fmt.Printf("%s\n", item.Title)
+func showItem(vault *onepass.Vault, item onepass.Item) {
+	typeName := item.TypeName
+	itemType, ok := onepass.ItemTypes[item.TypeName]
+	if ok {
+		typeName = itemType.Name
+	}
+
+	fmt.Printf("%s (%s)\n", item.Title, typeName)
 	fmt.Printf("Info:\n")
 	fmt.Printf("  ID: %s\n", item.Uuid)
 
@@ -274,6 +280,16 @@ func showItem(item onepass.Item) {
 		updateTime = int64(item.CreatedAt)
 	}
 	fmt.Printf("  Updated: %s\n", time.Unix(updateTime, 0).Format("15:04 02/01/06"))
+
+	if len(item.FolderUuid) > 0 {
+		folder, err := vault.LoadItem(item.FolderUuid)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Item folder '%s' not found", item.FolderUuid)
+			// continue
+		}
+		fmt.Printf("  Folder: %s\n", folder.Title)
+	}
+
 	fmt.Println()
 
 	content, err := item.Content()
@@ -984,7 +1000,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 				fmt.Println()
 			}
 			if mode == "show" {
-				showItem(item)
+				showItem(vault, item)
 			} else {
 				showItemJson(item)
 			}
