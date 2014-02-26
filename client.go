@@ -1194,7 +1194,7 @@ func main() {
 	}
 
 	if mode == "info" {
-		fmt.Printf("onepass.Vault path: %s\n", config.VaultDir)
+		fmt.Printf("Vault path: %s\n", config.VaultDir)
 		return
 	}
 
