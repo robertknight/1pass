@@ -83,7 +83,7 @@ var commandModes = []commandMode{
 	{
 		command:     "move",
 		description: "Move items to a folder",
-		argNames:    []string{"item-pattern", "folder-pattern"},
+		argNames:    []string{"item-pattern", "[folder-pattern]"},
 	},
 	{
 		command:     "update",
