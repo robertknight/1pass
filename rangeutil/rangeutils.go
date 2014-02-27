@@ -1,4 +1,4 @@
-package main
+package rangeutil
 
 import (
 	"sort"
@@ -23,7 +23,7 @@ func (s rangeSorter) Swap(i, j int) {
 	s.swap(i+s.min, j+s.min)
 }
 
-func indexInRange(min, max int, pred func(i int) bool) int {
+func IndexIn(min, max int, pred func(i int) bool) int {
 	for i := min; i < max; i++ {
 		if pred(i) {
 			return i
@@ -32,11 +32,11 @@ func indexInRange(min, max int, pred func(i int) bool) int {
 	return -1
 }
 
-func rangeContains(min, max int, pred func(i int) bool) bool {
-	return indexInRange(min, max, pred) != -1
+func Contains(min, max int, pred func(i int) bool) bool {
+	return IndexIn(min, max, pred) != -1
 }
 
-func sortRange(min, max int, lessFunc func(i, k int) bool, swapFunc func(i, k int)) {
+func Sort(min, max int, lessFunc func(i, k int) bool, swapFunc func(i, k int)) {
 	sorter := rangeSorter{
 		min:      min,
 		max:      max,

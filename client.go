@@ -14,132 +14,118 @@ import (
 	"time"
 
 	"code.google.com/p/go.crypto/ssh/terminal"
+	"github.com/robertknight/1pass/cmdmodes"
 	"github.com/robertknight/1pass/jsonutil"
 	"github.com/robertknight/1pass/onepass"
+	"github.com/robertknight/1pass/rangeutil"
 	"github.com/robertknight/clipboard"
 )
 
-type commandMode struct {
-	// name of the command, eg 'add', 'update'
-	command string
-	// one-line description of the command
-	description string
-	// required and optional positional argument names
-	// optional args have a '[' prefix
-	argNames []string
-	// function which returns additional help text for
-	// use with 'help <command>'
-	extraHelp func() string
-	// indicates this is an internal command that should
-	// not be displayed in 'help' output
-	internal bool
-}
-
-var commandModes = []commandMode{
+var commandModes = []cmdmodes.Mode{
 	{
-		command:     "new",
-		description: "Create a new vault",
-		argNames:    []string{"[path]"},
+		Command:     "new",
+		Description: "Create a new vault",
+		ArgNames:    []string{"[path]"},
 	},
 	{
-		command:     "gen-password",
-		description: "Generate a new random password",
+		Command:     "gen-password",
+		Description: "Generate a new random password",
 	},
 	{
-		command:     "set-vault",
-		description: "Set the path to the 1Password vault",
-		argNames:    []string{"[path]"},
+		Command:     "set-vault",
+		Description: "Set the path to the 1Password vault",
+		ArgNames:    []string{"[path]"},
 	},
 	{
-		command:     "info",
-		description: "Display info about the current vault",
+		Command:     "info",
+		Description: "Display info about the current vault",
 	},
 	{
-		command:     "list",
-		description: "List items in the vault",
-		argNames:    []string{"[pattern]"},
+		Command:     "list",
+		Description: "List items in the vault",
+		ArgNames:    []string{"[pattern]"},
 	},
 	{
-		command:     "list-folder",
-		description: "List items in a folder",
-		argNames:    []string{"pattern"},
+		Command:     "list-folder",
+		Description: "List items in a folder",
+		ArgNames:    []string{"pattern"},
 	},
 	{
-		command:     "show-json",
-		description: "Show the raw decrypted JSON for the given item",
-		argNames:    []string{"pattern"},
+		Command:     "show-json",
+		Description: "Show the raw decrypted JSON for the given item",
+		ArgNames:    []string{"pattern"},
 	},
 	{
-		command:     "show",
-		description: "Display the details of the given item",
-		argNames:    []string{"pattern"},
+		Command:     "show",
+		Description: "Display the details of the given item",
+		ArgNames:    []string{"pattern"},
 	},
 	{
-		command:     "add",
-		description: "Add a new item to the vault",
-		argNames:    []string{"type", "title"},
-		extraHelp:   addItemHelp,
+		Command:     "add",
+		Description: "Add a new item to the vault",
+		ArgNames:    []string{"type", "title"},
+		ExtraHelp:   addItemHelp,
 	},
 	{
-		command:     "move",
-		description: "Move items to a folder",
-		argNames:    []string{"item-pattern", "[folder-pattern]"},
+		Command:     "move",
+		Description: "Move items to a folder",
+		ArgNames:    []string{"item-pattern", "[folder-pattern]"},
 	},
 	{
-		command:     "update",
-		description: "Update an existing item in the vault",
-		argNames:    []string{"pattern"},
+		Command:     "update",
+		Description: "Update an existing item in the vault",
+		ArgNames:    []string{"pattern"},
 	},
 	{
-		command:     "remove",
-		description: "Remove items from the vault matching the given pattern",
-		argNames:    []string{"pattern"},
+		Command:     "remove",
+		Description: "Remove items from the vault matching the given pattern",
+		ArgNames:    []string{"pattern"},
 	},
 	{
-		command:     "trash",
-		description: "Move items to the trash",
-		argNames:    []string{"pattern"},
+		Command:     "trash",
+		Description: "Move items to the trash",
+		ArgNames:    []string{"pattern"},
 	},
 	{
-		command:     "restore",
-		description: "Restore items from the trash",
-		argNames:    []string{"pattern"},
+		Command:     "restore",
+		Description: "Restore items from the trash",
+		ArgNames:    []string{"pattern"},
 	},
 	{
-		command:     "rename",
-		description: "Renames an item in the vault",
-		argNames:    []string{"pattern", "new-title"},
+		Command:     "rename",
+		Description: "Renames an item in the vault",
+		ArgNames:    []string{"pattern", "new-title"},
 	},
 	{
-		command:     "copy",
-		description: "Copy information from the given item to the clipboard",
-		argNames:    []string{"pattern", "[field]"},
-		extraHelp:   copyItemHelp,
+		Command:     "copy",
+		Description: "Copy information from the given item to the clipboard",
+		ArgNames:    []string{"pattern", "[field]"},
+		ExtraHelp:   copyItemHelp,
 	},
 	{
-		command:     "export",
-		description: "Export an item to a JSON file",
-		argNames:    []string{"pattern", "path"},
+		Command:     "export",
+		Description: "Export an item to a JSON file",
+		ArgNames:    []string{"pattern", "path"},
 	},
 	{
-		command:     "import",
-		description: "Import an item from a JSON file",
-		argNames:    []string{"path"},
+		Command:     "import",
+		Description: "Import an item from a JSON file",
+		ArgNames:    []string{"path"},
 	},
 	{
-		command:     "set-password",
-		description: "Change the master password for the vault",
-		extraHelp:   setPasswordHelp,
+		Command:     "set-password",
+		Description: "Change the master password for the vault",
+		ExtraHelp:   setPasswordHelp,
 	},
 	{
-		command:     "help",
-		description: "Display usage information",
+		Command:     "help",
+		Description: "Display usage information",
 	},
 	{
-		command:     "export-item-templates",
-		description: "Create item templates from items matching the given pattern",
-		argNames:    []string{"pattern"},
-		internal:    true,
+		Command:     "export-item-templates",
+		Description: "Create item templates from items matching the given pattern",
+		ArgNames:    []string{"pattern"},
+		Internal:    true,
 	},
 }
 
@@ -200,7 +186,7 @@ func findKeyChainDirs() []string {
 		os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain",
 	}
 	for _, defaultPath := range defaultPaths {
-		ok := rangeContains(0, len(paths), func(i int) bool {
+		ok := rangeutil.Contains(0, len(paths), func(i int) bool {
 			return paths[i] == defaultPath
 		})
 		if !ok {
@@ -229,7 +215,7 @@ func listItems(vault *onepass.Vault, pattern string) {
 		os.Exit(1)
 	}
 
-	sortRange(0, len(items), func(i, k int) bool {
+	rangeutil.Sort(0, len(items), func(i, k int) bool {
 		return strings.ToLower(items[i].Title) < strings.ToLower(items[k].Title)
 	},
 		func(i, k int) {
@@ -532,31 +518,6 @@ func lookupItems(vault *onepass.Vault, pattern string) ([]onepass.Item, error) {
 	return matches, nil
 }
 
-func parseCmdArgs(cmdName string, cmdArgs []string, out ...*string) error {
-	requiredArgs := 0
-	var argNames []string
-	for _, mode := range commandModes {
-		if mode.command == cmdName {
-			argNames = mode.argNames
-			for _, argName := range mode.argNames {
-				if !strings.HasPrefix(argName, "[") {
-					requiredArgs++
-				}
-			}
-		}
-	}
-	if len(cmdArgs) < requiredArgs {
-		return fmt.Errorf("Missing arguments: %s", strings.Join(argNames[len(cmdArgs):requiredArgs], ", "))
-	}
-	if len(cmdArgs) > len(out) {
-		return fmt.Errorf("Additional unused arguments: %s", strings.Join(cmdArgs[len(out):], ", "))
-	}
-	for i, _ := range cmdArgs {
-		*out[i] = cmdArgs[i]
-	}
-	return nil
-}
-
 // read a response to a yes/no question from stdin
 func readConfirmation() bool {
 	var response string
@@ -617,68 +578,6 @@ func createNewVault(path string) {
 	_, err = onepass.NewVault(path, security)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create new vault: %v", err)
-	}
-}
-
-func printHelp(cmd string) {
-	if len(cmd) == 0 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <command> <args>\n\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "%s is a tool for managing 1Password vaults.\n\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "Supported commands:\n\n")
-
-		sortedCommands := append([]commandMode{}, commandModes...)
-		sortRange(0, len(sortedCommands), func(i, k int) bool {
-			return sortedCommands[i].command < sortedCommands[k].command
-		},
-			func(i, k int) {
-				sortedCommands[i], sortedCommands[k] = sortedCommands[k], sortedCommands[i]
-			})
-
-		// maximum width for command names before
-		// description is moved onto next line
-		cmdWidth := 12
-		for _, cmd := range sortedCommands {
-			if cmd.internal {
-				continue
-			}
-			fmt.Fprintf(os.Stderr, "  %s", cmd.command)
-			padding := 0
-			if len(cmd.command) > cmdWidth {
-				fmt.Fprintf(os.Stderr, "\n")
-				padding = 2 + cmdWidth
-			} else {
-				padding = cmdWidth - len(cmd.command)
-			}
-			padding += 2
-			fmt.Fprintf(os.Stderr, "  %*.s%s\n", padding, "", cmd.description)
-		}
-		fmt.Printf("\nUse '%s help <command>' for more information about using a given command.\n\n", os.Args[0])
-	} else {
-		found := false
-		for _, mode := range commandModes {
-			if mode.command == cmd {
-				found = true
-
-				syntax := fmt.Sprintf("%s %s", os.Args[0], mode.command)
-				for _, arg := range mode.argNames {
-					if strings.HasPrefix(arg, "[") {
-						// optional arg
-						syntax = fmt.Sprintf("%s %s", syntax, arg)
-					} else {
-						// required arg
-						syntax = fmt.Sprintf("%s <%s>", syntax, arg)
-					}
-				}
-				fmt.Printf("%s\n\n%s\n\n", syntax, mode.description)
-
-				if mode.extraHelp != nil {
-					fmt.Printf("%s\n\n", mode.extraHelp())
-				}
-			}
-		}
-		if !found {
-			fmt.Fprintf(os.Stderr, "No such command: '%s'\n", cmd)
-		}
 	}
 }
 
@@ -965,23 +864,24 @@ func importItem(vault *onepass.Vault, path string) {
 }
 
 func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
+	parser := cmdmodes.NewParser(commandModes)
 	var err error
 	switch mode {
 	case "list":
 		var pattern string
-		parseCmdArgs(mode, cmdArgs, &pattern)
+		parser.ParseCmdArgs(mode, cmdArgs, &pattern)
 		listItems(vault, pattern)
 
 	case "list-folder":
 		var pattern string
-		parseCmdArgs(mode, cmdArgs, &pattern)
+		parser.ParseCmdArgs(mode, cmdArgs, &pattern)
 		listFolder(vault, pattern)
 
 	case "show-json":
 		fallthrough
 	case "show":
 		var pattern string
-		err = parseCmdArgs(mode, cmdArgs, &pattern)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1008,7 +908,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 	case "add":
 		var itemType string
 		var title string
-		err = parseCmdArgs(mode, cmdArgs, &itemType, &title)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &itemType, &title)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1019,7 +919,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 		}
 	case "update":
 		var pattern string
-		err = parseCmdArgs(mode, cmdArgs, &pattern)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1027,7 +927,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 
 	case "remove":
 		var pattern string
-		err = parseCmdArgs(mode, cmdArgs, &pattern)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1035,7 +935,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 
 	case "trash":
 		var pattern string
-		err = parseCmdArgs(mode, cmdArgs, &pattern)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1043,7 +943,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 
 	case "restore":
 		var pattern string
-		err = parseCmdArgs(mode, cmdArgs, &pattern)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1052,7 +952,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 	case "rename":
 		var pattern string
 		var newTitle string
-		err = parseCmdArgs(mode, cmdArgs, &pattern, &newTitle)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern, &newTitle)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1061,7 +961,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 	case "copy":
 		var pattern string
 		var field string
-		err = parseCmdArgs(mode, cmdArgs, &pattern, &field)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern, &field)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1069,7 +969,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 
 	case "import":
 		var path string
-		err = parseCmdArgs(mode, cmdArgs, &path)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &path)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1078,7 +978,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 	case "export":
 		var pattern string
 		var path string
-		err = parseCmdArgs(mode, cmdArgs, &pattern, &path)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern, &path)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1086,7 +986,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 
 	case "export-item-templates":
 		var pattern string
-		err = parseCmdArgs(mode, cmdArgs, &pattern)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1095,7 +995,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 	case "move":
 		var folderPattern string
 		var itemPattern string
-		err = parseCmdArgs(mode, cmdArgs, &itemPattern, &folderPattern)
+		err = parser.ParseCmdArgs(mode, cmdArgs, &itemPattern, &folderPattern)
 		if err != nil {
 			fatalErr(err, "")
 		}
@@ -1128,9 +1028,11 @@ func startAgent() error {
 }
 
 func main() {
+	banner := fmt.Sprintf("%s is a tool for managing 1Password vaults.", os.Args[0])
+	parser := cmdmodes.NewParser(commandModes)
 	agentFlag := flag.Bool("agent", false, "Start 1pass in agent mode")
 	flag.Usage = func() {
-		printHelp("")
+		parser.PrintHelp(banner, "")
 	}
 	flag.Parse()
 
@@ -1150,7 +1052,7 @@ func main() {
 		if len(flag.Args()) > 1 {
 			command = flag.Args()[1]
 		}
-		printHelp(command)
+		parser.PrintHelp(banner, command)
 		os.Exit(1)
 	}
 
@@ -1163,7 +1065,7 @@ func main() {
 	switch mode {
 	case "new":
 		var path string
-		_ = parseCmdArgs(mode, cmdArgs, &path)
+		_ = parser.ParseCmdArgs(mode, cmdArgs, &path)
 		if len(path) == 0 {
 			path = os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain"
 		}
@@ -1173,7 +1075,7 @@ func main() {
 		fmt.Printf("%s\n", genDefaultPassword())
 	case "set-vault":
 		var newPath string
-		_ = parseCmdArgs(mode, cmdArgs, &newPath)
+		_ = parser.ParseCmdArgs(mode, cmdArgs, &newPath)
 		config.VaultDir = newPath
 		writeConfig(&config)
 	default:
