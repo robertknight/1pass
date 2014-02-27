@@ -372,7 +372,7 @@ func addItem(vault *onepass.Vault, title string, shortTypeName string) error {
 
 	// load item templates
 	templates := map[string]onepass.ItemTemplate{}
-	err := jsonutil.ReadFile("item-templates.js", &templates)
+	err := json.Unmarshal([]byte(itemTemplates), &templates)
 	if err != nil {
 		return fmt.Errorf("Failed to read item templates: %v", err)
 	}

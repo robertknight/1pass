@@ -1,4 +1,8 @@
-{
+package main
+
+// map of item type -> default item template
+// for all of the basic item types
+const itemTemplates = `{
   "identities.Identity": {
     "sections": [
       {
@@ -1044,4 +1048,4 @@
       }
     ]
   }
-}
+}`
