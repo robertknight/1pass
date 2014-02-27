@@ -653,6 +653,7 @@ func (item *Item) SetContent(data ItemContent) error {
 	if err != nil {
 		return err
 	}
+
 	return item.SetContentJson(string(json))
 }
 
@@ -668,6 +669,7 @@ func (item *Item) SetContentJson(content string) error {
 	if item.vault.IsLocked() {
 		return errors.New("Vault is locked")
 	}
+
 	item.Encrypted, err = item.vault.CryptoAgent.Encrypt(item.SecurityLevel, []byte(content))
 	if err != nil {
 		return fmt.Errorf("Failed to encrypt item: %v", err)

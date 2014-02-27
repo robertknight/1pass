@@ -343,7 +343,7 @@ func readFormFieldValue(field onepass.WebFormField) string {
 	return newValue
 }
 
-func addItem(vault *onepass.Vault, title string, shortTypeName string) error {
+func addItem(vault *onepass.Vault, title string, shortTypeName string) {
 	itemContent := onepass.ItemContent{}
 	var typeName string
 	for typeKey, itemType := range onepass.ItemTypes {
@@ -353,19 +353,19 @@ func addItem(vault *onepass.Vault, title string, shortTypeName string) error {
 		}
 	}
 	if len(typeName) == 0 {
-		return fmt.Errorf("Unknown item type '%s'", shortTypeName)
+		fatalErr(fmt.Errorf("Unknown item type '%s'", shortTypeName), "")
 	}
 
 	// load item templates
 	templates := map[string]onepass.ItemTemplate{}
 	err := json.Unmarshal([]byte(itemTemplates), &templates)
 	if err != nil {
-		return fmt.Errorf("Failed to read item templates: %v", err)
+		fatalErr(err, "Failed to read item templates")
 	}
 
 	template, ok := templates[typeName]
 	if !ok {
-		return fmt.Errorf("No template for item type '%s'", shortTypeName)
+		fatalErr(fmt.Errorf("No template for item type '%s'", shortTypeName), "")
 	}
 
 	// read sections
@@ -412,8 +412,10 @@ func addItem(vault *onepass.Vault, title string, shortTypeName string) error {
 
 	// save item to vault
 	item, err := vault.AddItem(title, typeName, itemContent)
-	err = item.Save()
-	return err
+	if err != nil {
+		fatalErr(err, "Unable to add item")
+	}
+	fmt.Printf("Added new item '%s' (%s)\n", item.Title, item.Uuid)
 }
 
 func updateItem(vault *onepass.Vault, pattern string) {
@@ -912,11 +914,8 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 		if err != nil {
 			fatalErr(err, "")
 		}
+		addItem(vault, title, itemType)
 
-		err = addItem(vault, title, itemType)
-		if err != nil {
-			fatalErr(err, "Unable to add item")
-		}
 	case "update":
 		var pattern string
 		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern)
