@@ -1,3 +1,5 @@
+// Package jsonutil provides a few utility functions for
+// working with JSON data
 package jsonutil
 
 import (
