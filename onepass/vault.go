@@ -98,7 +98,13 @@ type Vault struct {
 	CryptoAgent CryptoAgent
 }
 
-type DecryptError error
+type DecryptError struct {
+	err error
+}
+
+func (err DecryptError) Error() string {
+	return err.err.Error()
+}
 
 // Represents a single encrypted item in a 1Password vault
 type Item struct {
@@ -319,7 +325,7 @@ func UnlockKeys(vaultPath string, pwd string) (KeyDict, error) {
 		}
 		decryptedKey, err := decryptKey([]byte(pwd), encryptedKey, salt, entry.Iterations, entry.Validation)
 		if err != nil {
-			return KeyDict{}, DecryptError(fmt.Errorf("Failed to decrypt main key: %v", err))
+			return KeyDict{}, DecryptError{err: fmt.Errorf("Failed to decrypt main key: %v", err)}
 		}
 		keys[entry.Level] = decryptedKey
 	}

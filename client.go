@@ -1057,6 +1057,7 @@ func main() {
 	banner := fmt.Sprintf("%s is a tool for managing 1Password vaults.", os.Args[0])
 	parser := cmdmodes.NewParser(commandModes)
 	agentFlag := flag.Bool("agent", false, "Start 1pass in agent mode")
+	vaultPathFlag := flag.String("vault", "", "Custom vault path")
 	flag.Usage = func() {
 		parser.PrintHelp(banner, "")
 	}
@@ -1072,6 +1073,9 @@ func main() {
 	}
 
 	config := readConfig()
+	if *vaultPathFlag != "" {
+		config.VaultDir = *vaultPathFlag
+	}
 
 	if len(flag.Args()) < 1 || flag.Args()[0] == "help" {
 		command := ""
@@ -1198,7 +1202,12 @@ func main() {
 
 		err = agentClient.Unlock(string(masterPwd))
 		if err != nil {
-			fatalErr(err, "Unable to unlock vault")
+			if _, ok := err.(onepass.DecryptError); ok {
+				fmt.Fprintf(os.Stderr, "Incorrect password\n")
+				os.Exit(1)
+			} else {
+				fatalErr(err, "Unable to unlock vault")
+			}
 		}
 	}
 	err = agentClient.RefreshAccess()

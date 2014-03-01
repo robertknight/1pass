@@ -221,6 +221,9 @@ func (client *OnePassAgentClient) Unlock(masterPwd string) error {
 		MasterPwd:   masterPwd,
 		ExpireAfter: defaultUnlockDelay,
 	}, &ok)
+	if err != nil && !ok {
+		return onepass.DecryptError{}
+	}
 	return err
 }
 
