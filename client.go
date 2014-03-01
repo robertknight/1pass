@@ -251,6 +251,28 @@ func prettyJson(src []byte) []byte {
 	return buffer.Bytes()
 }
 
+func showItems(vault *onepass.Vault, pattern string, asJson bool) {
+	items, err := lookupItems(vault, pattern)
+	if err != nil {
+		fatalErr(err, "Unable to lookup items")
+	}
+
+	if len(items) == 0 {
+		fmt.Fprintf(os.Stderr, "No matching items\n")
+	}
+
+	for i, item := range items {
+		if i > 0 {
+			fmt.Println()
+		}
+		if asJson {
+			showItemJson(item)
+		} else {
+			showItem(vault, item)
+		}
+	}
+}
+
 func showItem(vault *onepass.Vault, item onepass.Item) {
 	typeName := item.TypeName
 	itemType, ok := onepass.ItemTypes[item.TypeName]
@@ -907,26 +929,8 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 		if err != nil {
 			fatalErr(err, "")
 		}
+		showItems(vault, pattern, mode == "show-json")
 
-		items, err := lookupItems(vault, pattern)
-		if err != nil {
-			fatalErr(err, "Unable to lookup items")
-		}
-
-		if len(items) == 0 {
-			fmt.Fprintf(os.Stderr, "No matching items\n")
-		}
-
-		for i, item := range items {
-			if i > 0 {
-				fmt.Println()
-			}
-			if mode == "show" {
-				showItem(vault, item)
-			} else {
-				showItemJson(item)
-			}
-		}
 	case "add":
 		var itemType string
 		var title string
