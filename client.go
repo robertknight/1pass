@@ -478,9 +478,8 @@ leave blank to keep current value.
 }
 
 func listHelp() string {
-	result := `[pattern] is an optional pattern which can either
-be a pattern matching an item's title, part of an item's ID or
-the name of a type of item to list all items of that type.`
+	result := `[pattern] is an optional pattern which can match
+part of an item's title, part of an item's ID or the type of item.`
 
 	result += "\n\n"
 	result += itemTypesHelp()
