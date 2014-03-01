@@ -1,3 +1,20 @@
+// Package onepass provides functions for working
+// with 1Password vaults using the 'Agile Keychain'
+// (AK) format.
+//
+// A high-level description of the Agile Keychain format
+// can be found at http://help.agilebits.com/1Password3/agile_keychain_design.html
+//
+// The format is relatively simple. A vault consists of a folder
+// of JSON data files, one per item in the vault, plus a contents.js index
+// file and an encryptionKeys.js file containing keys used to encrypt data
+// in the individual item files. This format lends itself to syncing via Dropbox
+// and similar tools.
+//
+// The item files consist of a JSON map with a number of unencrypted fields
+// for the item title, type, last update date and other data plus an 'encrypted'
+// field containing the base64-encoded encrypted JSON data for the item.
+//
 package onepass
 
 import (

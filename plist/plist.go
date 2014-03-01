@@ -1,3 +1,13 @@
+// Package plist provides functions to marshal
+// Go data structures to Apple Property List (plist)
+// XML files.
+//
+// Although plist files using an XML encoding, the actual
+// data structure is very similar to a JSON file, consisting
+// of arrays, dictionaries and string, boolean and number
+// primitives. For this reason, the plist package uses
+// the same struct tags as encoding/json to specify how
+// to encode struct fields.
 package plist
 
 import (
