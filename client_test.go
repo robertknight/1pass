@@ -10,7 +10,7 @@ import (
 var ClientTestPwd = "test-pwd"
 
 func newTestVault(t *testing.T) *onepass.Vault {
-	path := os.TempDir() + "/vault"
+	path := os.TempDir() + "/vault.agilekeychain"
 	err := os.RemoveAll(path)
 	if err != nil {
 		t.Fatalf("Failed to create test dir")

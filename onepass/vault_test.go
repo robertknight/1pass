@@ -36,7 +36,7 @@ func newTestContent(url string) ItemContent {
 }
 
 func newTestVault() (Vault, error) {
-	path := os.TempDir() + "/vault"
+	path := os.TempDir() + "/vault.agilekeychain"
 	err := os.RemoveAll(path)
 	if err != nil {
 		return Vault{}, err
@@ -202,7 +202,7 @@ func TestEncryptDecryptKey(t *testing.T) {
 }
 
 func TestNewVault(t *testing.T) {
-	vaultDir := "test/new-vault"
+	vaultDir := "test/new-vault.agilekeychain"
 	err := os.RemoveAll(vaultDir)
 	if err != nil {
 		t.Error(err)
@@ -249,7 +249,7 @@ func TestNewVault(t *testing.T) {
 }
 
 func TestChangePass(t *testing.T) {
-	vaultDir := "test/change-pass"
+	vaultDir := "test/change-pass.agilekeychain"
 	err := os.RemoveAll(vaultDir)
 	if err != nil {
 		t.Error(err)

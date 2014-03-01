@@ -219,6 +219,10 @@ type VaultSecurity struct {
 //
 // The returned vault is initially locked
 func NewVault(vaultPath string, security VaultSecurity) (Vault, error) {
+	if !strings.HasSuffix(vaultPath, ".agilekeychain") {
+		return Vault{}, fmt.Errorf("vault folder name must end with .agilekeychain")
+	}
+
 	// number of iterations used by current version of 1Password
 	// iOS app
 	const defaultPbkdfIterations = 17094

@@ -609,6 +609,9 @@ func readNewPassword(passType string) (string, error) {
 }
 
 func createNewVault(path string) {
+	if !strings.HasSuffix(path, ".agilekeychain") {
+		path += ".agilekeychain"
+	}
 	fmt.Printf("Creating new vault in %s\n", path)
 	fmt.Printf("Enter master password: ")
 	masterPwd, err := terminal.ReadPassword(0)
@@ -1092,7 +1095,6 @@ func main() {
 		if len(path) == 0 {
 			path = os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain"
 		}
-		fmt.Printf("Creating new vault in '%s'\n", path)
 		createNewVault(path)
 	case "gen-password":
 		fmt.Printf("%s\n", genDefaultPassword())
