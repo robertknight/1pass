@@ -12,7 +12,6 @@ import (
 	"github.com/robertknight/1pass/onepass"
 )
 
-var agentConnType = "unix"
 var agentConnAddr = os.ExpandEnv("$HOME/.1pass.sock")
 var agentBinaryVersion = appBinaryVersion()
 
@@ -177,13 +176,17 @@ func (agent *OnePassAgent) Info(unused string, info *AgentInfo) error {
 }
 
 func (agent *OnePassAgent) Serve() error {
-	err := os.Remove(agentConnAddr)
+	return agent.ServeAt(agentConnAddr)
+}
+
+func (agent *OnePassAgent) ServeAt(addr string) error {
+	err := os.Remove(addr)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	rpcServer := rpc.NewServer()
 	rpcServer.Register(agent)
-	listener, err := net.Listen(agentConnType, agentConnAddr)
+	listener, err := net.Listen("unix", addr)
 	if err != nil {
 		return err
 	}
@@ -255,7 +258,13 @@ func (client *OnePassAgentClient) AgentInfo() (AgentInfo, error) {
 }
 
 func DialAgent(vaultPath string) (OnePassAgentClient, error) {
-	rpcClient, err := rpc.Dial(agentConnType, agentConnAddr)
+	var agentConnAddr = os.ExpandEnv("$HOME/.1pass.sock")
+	client, err := DialAgentAt(vaultPath, agentConnAddr)
+	return client, err
+}
+
+func DialAgentAt(vaultPath string, sock string) (OnePassAgentClient, error) {
+	rpcClient, err := rpc.Dial("unix", sock)
 	if err != nil {
 		return OnePassAgentClient{}, err
 	}
