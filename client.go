@@ -44,6 +44,7 @@ var commandModes = []cmdmodes.Mode{
 		Command:     "list",
 		Description: "List items in the vault",
 		ArgNames:    []string{"[pattern]"},
+		ExtraHelp:   listHelp,
 	},
 	{
 		Command:     "list-folder",
@@ -64,7 +65,7 @@ var commandModes = []cmdmodes.Mode{
 		Command:     "add",
 		Description: "Add a new item to the vault",
 		ArgNames:    []string{"type", "title"},
-		ExtraHelp:   addItemHelp,
+		ExtraHelp:   itemTypesHelp,
 	},
 	{
 		Command:     "move",
@@ -476,16 +477,29 @@ leave blank to keep current value.
 	}
 }
 
-func addItemHelp() string {
+func listHelp() string {
+	result := `[pattern] is an optional pattern which can either
+be a pattern matching an item's title, part of an item's ID or
+the name of a type of item to list all items of that type.`
+
+	result += "\n\n"
+	result += itemTypesHelp()
+	return result
+}
+
+func itemTypesHelp() string {
 	typeAliases := map[string]onepass.ItemType{}
 	sortedAliases := []string{}
-	for _, itemType := range onepass.ItemTypes {
+	for code, itemType := range onepass.ItemTypes {
+		if code == "system.Tombstone" {
+			continue
+		}
 		typeAliases[itemType.ShortAlias] = itemType
 		sortedAliases = append(sortedAliases, itemType.ShortAlias)
 	}
 	sort.Strings(sortedAliases)
 
-	result := "onepass.Item Types:\n\n"
+	result := "Item Types:\n\n"
 	for i, alias := range sortedAliases {
 		if i > 0 {
 			result += "\n"
@@ -504,6 +518,13 @@ the same way that item name patterns are matched against item titles.`
 }
 
 func lookupItems(vault *onepass.Vault, pattern string) ([]onepass.Item, error) {
+	var typeName string
+	for key, itemType := range onepass.ItemTypes {
+		if itemType.ShortAlias == pattern {
+			typeName = key
+		}
+	}
+
 	items, err := vault.ListItems()
 	if err != nil {
 		return items, err
@@ -511,9 +532,9 @@ func lookupItems(vault *onepass.Vault, pattern string) ([]onepass.Item, error) {
 	patternLower := strings.ToLower(pattern)
 	matches := []onepass.Item{}
 	for _, item := range items {
-		if strings.Contains(strings.ToLower(item.Title), patternLower) {
-			matches = append(matches, item)
-		} else if strings.HasPrefix(strings.ToLower(item.Uuid), patternLower) {
+		if strings.Contains(strings.ToLower(item.Title), patternLower) ||
+			strings.HasPrefix(strings.ToLower(item.Uuid), patternLower) ||
+			(typeName != "" && item.TypeName == typeName) {
 			matches = append(matches, item)
 		}
 	}
