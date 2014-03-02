@@ -4,6 +4,7 @@ all: 1pass
 DEPS=*.go onepass/*.go jsonutil/*.go plist/*.go rangeutil/*.go cmdmodes/*.go
 
 1pass: $(DEPS)
+	go get -d
 	go build
 	go test ./...
 
