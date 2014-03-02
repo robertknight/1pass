@@ -3,3 +3,4 @@ notifications:
     email: false
 go:
  - 1.2
+after_failure: "cat /home/travis/.pip/pip.log"
