@@ -4,4 +4,4 @@ notifications:
 go:
  - 1.2
 install:
- - "pip install --quiet --requirement requirements.txt"
+ - "pip install --requirement requirements.txt"
