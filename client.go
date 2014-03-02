@@ -1095,9 +1095,13 @@ func main() {
 	switch mode {
 	case "new":
 		var path string
-		_ = parser.ParseCmdArgs(mode, cmdArgs, &path)
-		if len(path) == 0 {
-			path = os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain"
+		if *vaultPathFlag != "" {
+			path = *vaultPathFlag
+		} else {
+			_ = parser.ParseCmdArgs(mode, cmdArgs, &path)
+			if len(path) == 0 {
+				path = os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain"
+			}
 		}
 		createNewVault(path)
 	case "gen-password":
