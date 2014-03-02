@@ -1,4 +1,4 @@
-all: 1pass
+all: 1pass test
 
 .PHONY: test
 DEPS=*.go onepass/*.go jsonutil/*.go plist/*.go rangeutil/*.go cmdmodes/*.go
@@ -6,7 +6,6 @@ DEPS=*.go onepass/*.go jsonutil/*.go plist/*.go rangeutil/*.go cmdmodes/*.go
 1pass: $(DEPS)
 	go get -d
 	go build
-	go test ./...
 
 test: 1pass
 	go test ./...
