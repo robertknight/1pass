@@ -99,6 +99,30 @@ if os.path.exists(TEST_VAULT):
   .expect('mypass')
   .wait())
 
+# Add a custom field to the new item
+(exec_1pass('add-field mysite')
+  .expect('Section')
+  .sendline('CustomSection')
+  .expect('Field')
+  .sendline('CustomField')
+  .expect('CustomField')
+  .sendline('CustomFieldValue')
+  .wait())
+
+# Update the custom field
+(exec_1pass('add-field mysite')
+  .expect('Section')
+  .sendline('1')
+  .expect('Field')
+  .sendline('1')
+  .expect('CustomField')
+  .sendline('NewCustomFieldValue')
+  .wait())
+
+(exec_1pass('show mysite')
+  .expect('NewCustomFieldValue')
+  .wait())
+
 # List the vault contents
 (exec_1pass('list')
   .expect('mysite')

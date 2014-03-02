@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -66,6 +67,11 @@ var commandModes = []cmdmodes.Mode{
 		Description: "Add a new item to the vault",
 		ArgNames:    []string{"type", "title"},
 		ExtraHelp:   itemTypesHelp,
+	},
+	{
+		Command:     "add-field",
+		Description: "Add or update a field in an item",
+		ArgNames:    []string{"pattern"},
 	},
 	{
 		Command:     "move",
@@ -439,6 +445,69 @@ func addItem(vault *onepass.Vault, title string, shortTypeName string) {
 		fatalErr(err, "Unable to add item")
 	}
 	fmt.Printf("Added new item '%s' (%s)\n", item.Title, item.Uuid)
+}
+
+func addItemField(vault *onepass.Vault, pattern string) {
+	item, err := lookupSingleItem(vault, pattern)
+	if err != nil {
+		fatalErr(err, "Failed to find item")
+	}
+	content, err := item.Content()
+	if err != nil {
+		fatalErr(err, "Unable to read item content")
+	}
+
+	for i, section := range content.Sections {
+		fmt.Printf("%d : %s\n", i+1, section.Title)
+	}
+
+	var section *onepass.ItemSection
+	var field *onepass.ItemField
+
+	sectionIdStr := readLinePrompt("Section (or title of new section)")
+	sectionId, err := strconv.Atoi(sectionIdStr)
+	if err != nil {
+		// new section
+		content.Sections = append(content.Sections, onepass.ItemSection{
+			Name:   sectionIdStr,
+			Title:  sectionIdStr,
+			Fields: []onepass.ItemField{},
+		})
+		section = &content.Sections[len(content.Sections)-1]
+	} else if sectionId > 0 && sectionId <= len(content.Sections) {
+		section = &content.Sections[sectionId-1]
+	} else {
+		fatalErr(nil, "Unknown section number")
+	}
+
+	for i, field := range section.Fields {
+		fmt.Printf("%d : %s\n", i+1, field.Title)
+	}
+	fieldIdStr := readLinePrompt("Field (or title of new field)")
+	fieldId, err := strconv.Atoi(fieldIdStr)
+	if err != nil {
+		// new field
+		section.Fields = append(section.Fields, onepass.ItemField{
+			Name:  fieldIdStr,
+			Kind:  "string",
+			Title: fieldIdStr,
+		})
+		field = &section.Fields[len(section.Fields)-1]
+	} else if fieldId > 0 && fieldId <= len(section.Fields) {
+		field = &section.Fields[fieldId-1]
+	} else {
+		fatalErr(nil, "Unknown field number")
+	}
+
+	field.Value = readFieldValue(*field)
+	err = item.SetContent(content)
+	if err != nil {
+		fatalErr(err, "Unable to save updated content")
+	}
+	err = item.Save()
+	if err != nil {
+		fatalErr(err, "Unable to save updated item")
+	}
 }
 
 func updateItem(vault *onepass.Vault, pattern string) {
@@ -942,6 +1011,14 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 			fatalErr(err, "")
 		}
 		addItem(vault, title, itemType)
+
+	case "add-field":
+		var pattern string
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		addItemField(vault, pattern)
 
 	case "update":
 		var pattern string
