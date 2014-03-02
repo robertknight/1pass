@@ -26,6 +26,14 @@ class OnePassCmd:
         print('Running %s' % onepass_cmd, file=test_log)
         self.child = pexpect.spawn(onepass_cmd)
         self.child.logfile = test_log
+
+        # disable the delays that pexpect adds by default
+        # before sending to children and after closing
+        # the process. The issues described in the pexpect
+        # documentation are not an issue in this case
+        self.child.delaybeforesend = 0
+        self.child.delayafterclose = 0
+
     def expect(self, pattern):
         try:
             self.child.expect(pattern, timeout=3)
@@ -144,3 +152,4 @@ if os.path.exists(TEST_VAULT):
   .wait())
 
 print('Interactive tests passed')
+
