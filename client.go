@@ -685,7 +685,7 @@ func readNewPassword(passType string) (string, error) {
 	return string(pwd), nil
 }
 
-func createNewVault(path string) {
+func createNewVault(path string, lowSecurity bool) {
 	if !strings.HasSuffix(path, ".agilekeychain") {
 		path += ".agilekeychain"
 	}
@@ -699,6 +699,12 @@ func createNewVault(path string) {
 	}
 
 	security := onepass.VaultSecurity{MasterPwd: string(masterPwd)}
+	if lowSecurity {
+		// use fewer PBKDF2 iterations to speed up
+		// master key decryption
+		security.Iterations = 10
+	}
+
 	_, err = onepass.NewVault(path, security)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create new vault: %v", err)
@@ -1136,6 +1142,8 @@ func main() {
 	parser := cmdmodes.NewParser(commandModes)
 	agentFlag := flag.Bool("agent", false, "Start 1pass in agent mode")
 	vaultPathFlag := flag.String("vault", "", "Custom vault path")
+	lowSecFlag := flag.Bool("low-security", false, "Use lower security but faster encryption for the master password")
+
 	flag.Usage = func() {
 		parser.PrintHelp(banner, "")
 	}
@@ -1181,7 +1189,7 @@ func main() {
 				path = os.Getenv("HOME") + "/Dropbox/1Password/1Password.agilekeychain"
 			}
 		}
-		createNewVault(path)
+		createNewVault(path, *lowSecFlag)
 	case "gen-password":
 		fmt.Printf("%s\n", genDefaultPassword())
 	case "set-vault":

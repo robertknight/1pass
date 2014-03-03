@@ -23,7 +23,7 @@ test_log = open('client_test.log', 'w')
 # can be used to create a sequence of interactions
 class OnePassCmd:
     def __init__(self, vault, cmd):
-        onepass_cmd = './1pass -vault %s %s' % (vault, cmd)
+        onepass_cmd = './1pass -low-security -vault %s %s' % (vault, cmd)
         print('Running %s' % onepass_cmd, file=test_log)
         self.child = pexpect.spawn(onepass_cmd)
         self.child.logfile = test_log
