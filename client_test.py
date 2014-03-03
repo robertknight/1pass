@@ -149,6 +149,32 @@ if os.path.exists(TEST_VAULT):
   .expect('mysite')
   .wait())
 
+# Create a folder
+(exec_1pass('add folder NewFolder')
+  .wait())
+(exec_1pass('list folder')
+  .expect('NewFolder')
+  .wait())
+
+# Move the item to the folder
+(exec_1pass('move mysite newfolder')
+  .wait())
+(exec_1pass('list-folder newfolder')
+  .expect('mysite')
+  .wait())
+
+# Remove the item from the folder
+(exec_1pass('move mysite')
+  .wait())
+(exec_1pass('list-folder newfolder')
+  .wait())
+
+# Remove the folder
+(exec_1pass('remove newfolder')
+  .expect("Remove 'NewFolder' from vault")
+  .sendline('y')
+  .wait())
+
 # Remove item
 (exec_1pass('remove mysite')
   .expect("Remove 'mysite' from vault")
