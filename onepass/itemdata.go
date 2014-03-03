@@ -190,6 +190,10 @@ var ItemTypes = map[string]ItemType{
 		Name:       "Folder",
 		ShortAlias: "folder",
 	},
+	"system.folder.SavedSearch": ItemType{
+		Name:       "Smart Folder",
+		ShortAlias: "smart-folder",
+	},
 	"wallet.financial.BankAccountUS": ItemType{
 		Name:       "Bank Account",
 		ShortAlias: "bank",
