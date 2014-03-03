@@ -234,6 +234,7 @@ func listItems(vault *onepass.Vault, pattern string) {
 }
 
 func listFolder(vault *onepass.Vault, pattern string) {
+	pattern = "folder:" + pattern
 	folder, err := lookupSingleItem(vault, pattern)
 	if err != nil {
 		fatalErr(err, "Failed to find folder")
@@ -537,9 +538,13 @@ func editItem(vault *onepass.Vault, pattern string) {
 
 func listHelp() string {
 	result := `[pattern] is an optional pattern which can match
-part of an item's title, part of an item's ID or the type of item.`
+part of an item's title, part of an item's ID or the type of item.
 
-	result += "\n\n"
+You can also specify both an item type and a title/ID pattern
+using '<item type>:<pattern>'.
+
+`
+
 	result += itemTypesHelp()
 	return result
 }
@@ -574,11 +579,32 @@ to copy. If omitted, defaults to 'password'.
 the same way that item name patterns are matched against item titles.`
 }
 
-func lookupItems(vault *onepass.Vault, pattern string) ([]onepass.Item, error) {
-	var typeName string
+// Returns the type code associated with a given alias.
+// eg. 'folder' => 'system.Folder'.
+// Returns an empty string if the given alias does not
+// correspond to any known item type
+func typeFromAlias(alias string) string {
 	for key, itemType := range onepass.ItemTypes {
-		if itemType.ShortAlias == pattern {
-			typeName = key
+		if itemType.ShortAlias == alias {
+			return key
+		}
+	}
+	return ""
+}
+
+func lookupItems(vault *onepass.Vault, pattern string) ([]onepass.Item, error) {
+	typeName := typeFromAlias(pattern)
+	if typeName != "" {
+		pattern = ""
+	}
+
+	if strings.Contains(pattern, ":") {
+		parts := strings.SplitN(pattern, ":", 2)
+		typeName = typeFromAlias(parts[0])
+		pattern = parts[1]
+
+		if typeName == "" {
+			fatalErr(nil, fmt.Sprintf("Unknown type name '%s'", parts[0]))
 		}
 	}
 
@@ -589,9 +615,15 @@ func lookupItems(vault *onepass.Vault, pattern string) ([]onepass.Item, error) {
 	patternLower := strings.ToLower(pattern)
 	matches := []onepass.Item{}
 	for _, item := range items {
+		patternMatch := pattern == ""
+		typeMatch := typeName == "" || item.TypeName == typeName
+
 		if strings.Contains(strings.ToLower(item.Title), patternLower) ||
-			strings.HasPrefix(strings.ToLower(item.Uuid), patternLower) ||
-			(typeName != "" && item.TypeName == typeName) {
+			strings.HasPrefix(strings.ToLower(item.Uuid), patternLower) {
+			patternMatch = true
+		}
+
+		if patternMatch && typeMatch {
 			matches = append(matches, item)
 		}
 	}
@@ -697,6 +729,7 @@ func moveItemsToFolder(vault *onepass.Vault, itemPattern string, folderPattern s
 	if err != nil {
 		fatalErr(err, "Unable to lookup items to move")
 	}
+	folderPattern = "folder:" + folderPattern
 
 	var folder onepass.Item
 	if len(folderPattern) > 0 {

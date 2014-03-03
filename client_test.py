@@ -141,6 +141,14 @@ if os.path.exists(TEST_VAULT):
   .expect('mysite')
   .wait())
 
+# List vault contents by type and pattern
+(exec_1pass('list login:mys')
+  .expect('mysite')
+  .wait())
+(exec_1pass('list login:')
+  .expect('mysite')
+  .wait())
+
 # Remove item
 (exec_1pass('remove mysite')
   .expect("Remove 'mysite' from vault")
