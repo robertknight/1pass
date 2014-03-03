@@ -28,6 +28,17 @@ type ItemContent struct {
 	HtmlId     string         `json:"htmlID,omitempty"`
 }
 
+// Contents of an item which are stored unencrypted
+type ItemOpenContents struct {
+	// List of tags associated with this item
+	Tags []string `json:"tags"`
+
+	// Indicates where this item will be displayed.
+	// Supported values are 'Always' (show everywhere)
+	// and 'Never' (never show in browser)
+	Scope string `json:"scope"`
+}
+
 // Section of an item's contents
 type ItemSection struct {
 	// Internal name of the section

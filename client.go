@@ -53,6 +53,15 @@ var commandModes = []cmdmodes.Mode{
 		ArgNames:    []string{"pattern"},
 	},
 	{
+		Command:     "list-tag",
+		Description: "List items with a given tag",
+		ArgNames:    []string{"tag"},
+	},
+	{
+		Command:     "list-tags",
+		Description: "List all tags",
+	},
+	{
 		Command:     "show-json",
 		Description: "Show the raw decrypted JSON for the given item",
 		ArgNames:    []string{"pattern"},
@@ -68,6 +77,7 @@ var commandModes = []cmdmodes.Mode{
 		ArgNames:    []string{"type", "title"},
 		ExtraHelp:   itemTypesHelp,
 	},
+
 	{
 		Command:     "edit",
 		Description: "Edit an existing item",
@@ -128,6 +138,16 @@ var commandModes = []cmdmodes.Mode{
 		Description: "Create item templates from items matching the given pattern",
 		ArgNames:    []string{"pattern"},
 		Internal:    true,
+	},
+	{
+		Command:     "add-tag",
+		Description: "Add a tag to an item",
+		ArgNames:    []string{"pattern", "tag"},
+	},
+	{
+		Command:     "remove-tag",
+		Description: "Remove tags from an item",
+		ArgNames:    []string{"pattern", "tag"},
 	},
 }
 
@@ -202,7 +222,7 @@ func findKeyChainDirs() []string {
 	return paths
 }
 
-func listItems(vault *onepass.Vault, pattern string) {
+func listMatchingItems(vault *onepass.Vault, pattern string) {
 	var items []onepass.Item
 	var err error
 
@@ -217,6 +237,10 @@ func listItems(vault *onepass.Vault, pattern string) {
 		os.Exit(1)
 	}
 
+	listItems(vault, items)
+}
+
+func listItems(vault *onepass.Vault, items []onepass.Item) {
 	rangeutil.Sort(0, len(items), func(i, k int) bool {
 		return strings.ToLower(items[i].Title) < strings.ToLower(items[k].Title)
 	},
@@ -240,11 +264,16 @@ func listFolder(vault *onepass.Vault, pattern string) {
 		fatalErr(err, "Failed to find folder")
 	}
 	items, err := vault.ListItems()
+	if err != nil {
+		fatalErr(err, "Failed to list items")
+	}
+	itemsInFolder := []onepass.Item{}
 	for _, item := range items {
 		if item.FolderUuid == folder.Uuid {
-			fmt.Printf("%s\n", item.Title)
+			itemsInFolder = append(itemsInFolder, item)
 		}
 	}
+	listItems(vault, itemsInFolder)
 }
 
 func prettyJson(src []byte) []byte {
@@ -299,6 +328,10 @@ func showItem(vault *onepass.Vault, item onepass.Item) {
 			// continue
 		}
 		fmt.Printf("  Folder: %s\n", folder.Title)
+	}
+
+	if len(item.OpenContents.Tags) > 0 {
+		fmt.Printf("  Tags: %s\n", strings.Join(item.OpenContents.Tags, ", "))
 	}
 
 	fmt.Println()
@@ -986,6 +1019,88 @@ func importItem(vault *onepass.Vault, path string) {
 	fmt.Printf("Imported item '%s' (%s)\n", item.Title, item.Uuid)
 }
 
+func listTag(vault *onepass.Vault, tag string) {
+	items, err := vault.ListItems()
+	if err != nil {
+		fatalErr(err, "Unable to list vault items")
+	}
+	itemsWithTag := []onepass.Item{}
+	for _, item := range items {
+		hasTag := rangeutil.Contains(0, len(item.OpenContents.Tags), func(i int) bool {
+			return item.OpenContents.Tags[i] == tag
+		})
+		if hasTag {
+			itemsWithTag = append(itemsWithTag, item)
+		}
+	}
+	listItems(vault, itemsWithTag)
+}
+
+func listTags(vault *onepass.Vault) {
+	uniqTags := map[string]bool{}
+	items, err := vault.ListItems()
+	if err != nil {
+		fatalErr(err, "Unable to list vault items")
+	}
+	for _, item := range items {
+		for _, tag := range item.OpenContents.Tags {
+			uniqTags[tag] = true
+		}
+	}
+	tags := []string{}
+	for tag, _ := range uniqTags {
+		tags = append(tags, tag)
+	}
+	sort.Strings(tags)
+	for _, tag := range tags {
+		fmt.Printf("%s\n", tag)
+	}
+}
+
+func addTag(vault *onepass.Vault, pattern string, tag string) {
+	items, err := lookupItems(vault, pattern)
+	if err != nil {
+		fatalErr(err, "Unable to lookup items")
+	}
+	for _, item := range items {
+		hasTag := rangeutil.Contains(0, len(item.OpenContents.Tags), func(i int) bool {
+			return item.OpenContents.Tags[i] == tag
+		})
+		if !hasTag {
+			item.OpenContents.Tags = append(item.OpenContents.Tags, tag)
+			err = item.Save()
+			if err != nil {
+				fatalErr(err, fmt.Sprintf("Unable to save item '%s'", item.Title))
+			}
+		}
+	}
+}
+
+func removeTag(vault *onepass.Vault, pattern string, tag string) {
+	items, err := lookupItems(vault, pattern)
+	if err != nil {
+		fatalErr(err, "Unable to lookup items")
+	}
+	for _, item := range items {
+		hasTag := rangeutil.Contains(0, len(item.OpenContents.Tags), func(i int) bool {
+			return item.OpenContents.Tags[i] == tag
+		})
+		if hasTag {
+			newTags := []string{}
+			for _, existingTag := range item.OpenContents.Tags {
+				if existingTag != tag {
+					newTags = append(newTags, existingTag)
+				}
+			}
+			item.OpenContents.Tags = newTags
+			err = item.Save()
+			if err != nil {
+				fatalErr(err, fmt.Sprintf("Unable to save item '%s'", item.Title))
+			}
+		}
+	}
+}
+
 func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 	parser := cmdmodes.NewParser(commandModes)
 	var err error
@@ -993,7 +1108,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 	case "list":
 		var pattern string
 		parser.ParseCmdArgs(mode, cmdArgs, &pattern)
-		listItems(vault, pattern)
+		listMatchingItems(vault, pattern)
 
 	case "list-folder":
 		var pattern string
@@ -1102,6 +1217,35 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 			fatalErr(err, "")
 		}
 		moveItemsToFolder(vault, itemPattern, folderPattern)
+
+	case "list-tag":
+		var tag string
+		err = parser.ParseCmdArgs(mode, cmdArgs, &tag)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		listTag(vault, tag)
+
+	case "list-tags":
+		listTags(vault)
+
+	case "add-tag":
+		var pattern string
+		var tag string
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern, &tag)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		addTag(vault, pattern, tag)
+
+	case "remove-tag":
+		var pattern string
+		var tag string
+		err = parser.ParseCmdArgs(mode, cmdArgs, &pattern, &tag)
+		if err != nil {
+			fatalErr(err, "")
+		}
+		removeTag(vault, pattern, tag)
 
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", mode)

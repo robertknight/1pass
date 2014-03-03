@@ -245,6 +245,31 @@ class OnePassTests(unittest.TestCase):
           .expect('Failed to find folder')
           .wait())
 
+    def testTags(self):
+        self._createVault()
+        self._addLoginItem('mysite', 'myuser', 'mypass', 'mysite.com')
+        (self.exec_1pass('add-tag mysite tag1')
+         .wait())
+        (self.exec_1pass('list-tags')
+         .expect('tag1')
+         .wait())
+        (self.exec_1pass('show mysite')
+         .expect('Tags: tag1')
+         .wait())
+        (self.exec_1pass('add-tag mysite anothertag')
+         .wait())
+        (self.exec_1pass('show mysite')
+         .expect('Tags: tag1, anothertag')
+         .wait())
+        (self.exec_1pass('list-tag tag1')
+         .expect('mysite')
+         .wait())
+        (self.exec_1pass('remove-tag mysite tag1')
+         .wait())
+        (self.exec_1pass('show mysite')
+         .expect('Tags: anothertag')
+         .wait())
+
     def testChangePassword(self):
         self._createVault()
 

@@ -145,6 +145,9 @@ type Item struct {
 	// to the Trash
 	Trashed bool `json:"trashed"`
 
+	// Unencrypted item content
+	OpenContents ItemOpenContents `json:"openContents"`
+
 	vault *Vault
 }
 
