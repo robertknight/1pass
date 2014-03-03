@@ -8,6 +8,7 @@ import pexpect
 import shutil
 import sys
 import os
+import unittest
 
 TEST_VAULT = '/tmp/1pass-client-test.agilekeychain'
 TEST_PASSWD = 'test-pwd'
@@ -51,163 +52,166 @@ def exec_1pass(cmd):
     child = OnePassCmd(TEST_VAULT, cmd)
     return child
 
-if os.path.exists(TEST_VAULT):
-    shutil.rmtree(TEST_VAULT)
+class OnePassTests(unittest.TestCase):
+    def setUp(self):
+        if os.path.exists(TEST_VAULT):
+            shutil.rmtree(TEST_VAULT)
+    def testClient(self):
+        # Setup a new vault
+        (exec_1pass('new')
+          .expect('Creating new vault.*' + TEST_VAULT)
+          .expect('Enter master password')
+          .sendline(TEST_PASSWD)
+          .expect('Re-enter master password')
+          .sendline(TEST_PASSWD)
+          .wait())
 
-# Setup a new vault
-(exec_1pass('new')
-  .expect('Creating new vault.*' + TEST_VAULT)
-  .expect('Enter master password')
-  .sendline(TEST_PASSWD)
-  .expect('Re-enter master password')
-  .sendline(TEST_PASSWD)
-  .wait())
+        # Ensure new vault is locked
+        (exec_1pass('lock')
+          .wait())
 
-# Ensure new vault is locked
-(exec_1pass('lock')
-  .wait())
+        # List vault contents - should be empty
+        (exec_1pass('list')
+          .expect('Master password')
+          .sendline(TEST_PASSWD)
+          .wait())
 
-# List vault contents - should be empty
-(exec_1pass('list')
-  .expect('Master password')
-  .sendline(TEST_PASSWD)
-  .wait())
+        # List again, no password required
+        (exec_1pass('list')
+          .wait())
 
-# List again, no password required
-(exec_1pass('list')
-  .wait())
+        # Lock vault
+        (exec_1pass('lock')
+          .wait())
 
-# Lock vault
-(exec_1pass('lock')
-  .wait())
+        # List again, password should
+        # be requested
+        (exec_1pass('list')
+          .expect('Master password')
+          .sendline(TEST_PASSWD)
+          .wait())
 
-# List again, password should
-# be requested
-(exec_1pass('list')
-  .expect('Master password')
-  .sendline(TEST_PASSWD)
-  .wait())
+        # Add a new item to the vault
+        (exec_1pass('add login mysite')
+          .expect('username')
+          .sendline('myuser')
+          .expect('password')
+          .sendline('mypass')
+          .expect('Re-enter')
+          .sendline('mypass')
+          .expect('website')
+          .sendline('mysite.com')
+          .wait())
 
-# Add a new item to the vault
-(exec_1pass('add login mysite')
-  .expect('username')
-  .sendline('myuser')
-  .expect('password')
-  .sendline('mypass')
-  .expect('Re-enter')
-  .sendline('mypass')
-  .expect('website')
-  .sendline('mysite.com')
-  .wait())
+        # Show the new item
+        (exec_1pass('show mysite')
+          .expect('mysite.com')
+          .expect('myuser')
+          .expect('mypass')
+          .wait())
 
-# Show the new item
-(exec_1pass('show mysite')
-  .expect('mysite.com')
-  .expect('myuser')
-  .expect('mypass')
-  .wait())
+        # Add a custom field to the new item
+        (exec_1pass('edit mysite')
+          .expect('Section')
+          .sendline('CustomSection')
+          .expect('Field')
+          .sendline('CustomField')
+          .expect('CustomField')
+          .sendline('CustomFieldValue')
+          .wait())
 
-# Add a custom field to the new item
-(exec_1pass('edit mysite')
-  .expect('Section')
-  .sendline('CustomSection')
-  .expect('Field')
-  .sendline('CustomField')
-  .expect('CustomField')
-  .sendline('CustomFieldValue')
-  .wait())
+        # Update the custom field
+        (exec_1pass('edit mysite')
+          .expect('Section')
+          .sendline('1')
+          .expect('Field')
+          .sendline('1')
+          .expect('CustomField')
+          .sendline('NewCustomFieldValue')
+          .wait())
 
-# Update the custom field
-(exec_1pass('edit mysite')
-  .expect('Section')
-  .sendline('1')
-  .expect('Field')
-  .sendline('1')
-  .expect('CustomField')
-  .sendline('NewCustomFieldValue')
-  .wait())
+        (exec_1pass('show mysite')
+          .expect('NewCustomFieldValue')
+          .wait())
 
-(exec_1pass('show mysite')
-  .expect('NewCustomFieldValue')
-  .wait())
+        # List the vault contents
+        (exec_1pass('list')
+          .expect('mysite')
+          .wait())
 
-# List the vault contents
-(exec_1pass('list')
-  .expect('mysite')
-  .wait())
+        # List vault contents by type
+        (exec_1pass('list login')
+          .expect('mysite')
+          .wait())
 
-# List vault contents by type
-(exec_1pass('list login')
-  .expect('mysite')
-  .wait())
+        # List vault contents by type and pattern
+        (exec_1pass('list login:mys')
+          .expect('mysite')
+          .wait())
+        (exec_1pass('list login:')
+          .expect('mysite')
+          .wait())
 
-# List vault contents by type and pattern
-(exec_1pass('list login:mys')
-  .expect('mysite')
-  .wait())
-(exec_1pass('list login:')
-  .expect('mysite')
-  .wait())
+        # Create a folder
+        (exec_1pass('add folder NewFolder')
+          .wait())
+        (exec_1pass('list folder')
+          .expect('NewFolder')
+          .wait())
 
-# Create a folder
-(exec_1pass('add folder NewFolder')
-  .wait())
-(exec_1pass('list folder')
-  .expect('NewFolder')
-  .wait())
+        # Move the item to the folder
+        (exec_1pass('move mysite newfolder')
+          .wait())
+        (exec_1pass('list-folder newfolder')
+          .expect('mysite')
+          .wait())
 
-# Move the item to the folder
-(exec_1pass('move mysite newfolder')
-  .wait())
-(exec_1pass('list-folder newfolder')
-  .expect('mysite')
-  .wait())
+        # Remove the item from the folder
+        (exec_1pass('move mysite')
+          .wait())
+        (exec_1pass('list-folder newfolder')
+          .wait())
 
-# Remove the item from the folder
-(exec_1pass('move mysite')
-  .wait())
-(exec_1pass('list-folder newfolder')
-  .wait())
+        # Remove the folder
+        (exec_1pass('remove newfolder')
+          .expect("Remove 'NewFolder' from vault")
+          .sendline('y')
+          .wait())
 
-# Remove the folder
-(exec_1pass('remove newfolder')
-  .expect("Remove 'NewFolder' from vault")
-  .sendline('y')
-  .wait())
+        # Remove item
+        (exec_1pass('remove mysite')
+          .expect("Remove 'mysite' from vault")
+          .sendline('y')
+          .wait())
 
-# Remove item
-(exec_1pass('remove mysite')
-  .expect("Remove 'mysite' from vault")
-  .sendline('y')
-  .wait())
+        (exec_1pass('show mysite')
+          .expect('No matching items')
+          .wait())
 
-(exec_1pass('show mysite')
-  .expect('No matching items')
-  .wait())
+        # Change vault password
+        (exec_1pass('set-password')
+          .expect('Current master password')
+          .sendline(TEST_PASSWD)
+          .expect('New master password')
+          .sendline('new-passwd')
+          .expect('Re-enter')
+          .sendline('new-passwd')
+          .wait())
+        (exec_1pass('lock')
+          .wait())
+        (exec_1pass('show mysite')
+          .expect('Master password')
+          .sendline(TEST_PASSWD)
+          .expect('Incorrect password')
+          .wait())
+        (exec_1pass('show mysite')
+          .expect('Master password')
+          .sendline('new-passwd')
+          .expect('No matching items')
+          .wait())
+        (exec_1pass('lock')
+          .wait())
 
-# Change vault password
-(exec_1pass('set-password')
-  .expect('Current master password')
-  .sendline(TEST_PASSWD)
-  .expect('New master password')
-  .sendline('new-passwd')
-  .expect('Re-enter')
-  .sendline('new-passwd')
-  .wait())
-(exec_1pass('lock')
-  .wait())
-(exec_1pass('show mysite')
-  .expect('Master password')
-  .sendline(TEST_PASSWD)
-  .expect('Incorrect password')
-  .wait())
-(exec_1pass('show mysite')
-  .expect('Master password')
-  .sendline('new-passwd')
-  .expect('No matching items')
-  .wait())
-(exec_1pass('lock')
-  .wait())
-
-print('Interactive tests passed')
+if __name__ == '__main__':
+    unittest.main()
 
