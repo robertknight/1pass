@@ -658,12 +658,6 @@ func fatalErr(err error, context string) {
 	os.Exit(1)
 }
 
-func checkErr(err error, context string) {
-	if err != nil {
-		fatalErr(err, context)
-	}
-}
-
 func readNewPassword(passType string) (string, error) {
 	fmt.Printf("%s (or '-' for a random new %s): ", passType, passType)
 	pwd, _ := terminal.ReadPassword(0)
