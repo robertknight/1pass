@@ -517,13 +517,22 @@ func editItem(vault *onepass.Vault, pattern string) {
 		for i, url := range content.Urls {
 			fmt.Printf("%d : %s (%s)\n", i+1, url.Label, url.Url)
 		}
-		urlIdStr := readLinePrompt("URL")
+		var url *onepass.ItemUrl
+		urlIdStr := readLinePrompt("URL (or label of new URL)")
 		urlId, err := strconv.Atoi(urlIdStr)
-		if err == nil && urlId > 0 && urlId <= len(content.Urls) {
-			content.Urls[urlId-1].Url = readLinePrompt("%s", content.Urls[urlId-1].Label)
+		if err != nil {
+			// new URL
+			content.Urls = append(content.Urls, onepass.ItemUrl{
+				Label: urlIdStr,
+			})
+			url = &content.Urls[len(content.Urls)-1]
+		} else if urlId > 0 && urlId <= len(content.Urls) {
+			url = &content.Urls[urlId-1]
 		} else {
 			fatalErr(nil, "Unknown URL number")
 		}
+
+		url.Url = readLinePrompt("%s", url.Label)
 	}
 
 	err = item.SetContent(content)
