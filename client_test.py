@@ -78,6 +78,20 @@ class OnePassTests(unittest.TestCase):
           .sendline(TEST_PASSWD)
           .wait())
 
+    def _addLoginItem(self, name, user, passwd, site):
+       # Add a new item to the vault
+        (self.exec_1pass('add login %s' % name)
+          .expect('username')
+          .sendline(user)
+          .expect('password')
+          .sendline(passwd)
+          .expect('Re-enter')
+          .sendline(passwd)
+          .expect('website')
+          .sendline(site)
+          .expect("Added new item '%s'" % name)
+          .wait())
+
     def testLockUnlock(self):
         self._createVault()
 
@@ -110,16 +124,7 @@ class OnePassTests(unittest.TestCase):
         self._createVault()
 
         # Add a new item to the vault
-        (self.exec_1pass('add login mysite')
-          .expect('username')
-          .sendline('myuser')
-          .expect('password')
-          .sendline('mypass')
-          .expect('Re-enter')
-          .sendline('mypass')
-          .expect('website')
-          .sendline('mysite.com')
-          .wait())
+        self._addLoginItem('mysite', 'myuser', 'mypass', 'mysite.com')
 
         # Show the new item
         (self.exec_1pass('show mysite')
@@ -170,6 +175,30 @@ class OnePassTests(unittest.TestCase):
           .expect('mysite')
           .wait())
 
+        # Remove item
+        (self.exec_1pass('remove mysite')
+          .expect("Remove 'mysite' from vault")
+          .sendline('y')
+          .wait())
+
+        (self.exec_1pass('show mysite')
+          .expect('No matching items')
+          .wait())
+
+    def testRenameItem(self):
+        self._createVault()
+        self._addLoginItem('mysite', 'myuser', 'mypass', 'mysite.com')
+
+        (self.exec_1pass('rename mysite newname')
+         .wait())
+        (self.exec_1pass('show newname')
+         .expect('mysite.com')
+         .wait())
+
+    def testFolder(self):
+        self._createVault()
+        self._addLoginItem('mysite', 'myuser', 'mypass', 'mysite.com')
+
         # Create a folder
         (self.exec_1pass('add folder NewFolder')
           .wait())
@@ -196,14 +225,9 @@ class OnePassTests(unittest.TestCase):
           .sendline('y')
           .wait())
 
-        # Remove item
-        (self.exec_1pass('remove mysite')
-          .expect("Remove 'mysite' from vault")
-          .sendline('y')
-          .wait())
-
-        (self.exec_1pass('show mysite')
-          .expect('No matching items')
+        # Check folder no longer exists
+        (self.exec_1pass('list-folder newfolder')
+          .expect('Failed to find folder')
           .wait())
 
     def testChangePassword(self):
