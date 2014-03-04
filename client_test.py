@@ -4,13 +4,13 @@
 # pexpect to drive the client interactively
 
 from __future__ import print_function
+import os
 import pexpect
+import random
 import shutil
 import sys
-import os
 import unittest
 
-TEST_VAULT = '/tmp/1pass-client-test.agilekeychain'
 TEST_PASSWD = 'test-pwd'
 
 test_log = open('client_test.log', 'w')
@@ -22,7 +22,8 @@ test_log = open('client_test.log', 'w')
 # expect() and sendline() return self so method chaining
 # can be used to create a sequence of interactions
 class OnePassCmd:
-    def __init__(self, vault, cmd):
+    def __init__(self, test, vault, cmd):
+        self.test = test
         onepass_cmd = './1pass -low-security -vault %s %s' % (vault, cmd)
         print('Running %s' % onepass_cmd, file=test_log)
         self.child = pexpect.spawn(onepass_cmd)
@@ -39,60 +40,77 @@ class OnePassCmd:
         try:
             self.child.expect(pattern, timeout=3)
         except pexpect.TIMEOUT:
-            print("Child did not produce expected output '%s'" % pattern, file=sys.stderr)
-            sys.exit(1)
+            self.test.fail("Child did not produce expected output '%s'" % pattern)
+        except pexpect.EOF:
+            self.test.fail("Child exited before producing expected output '%s'" % pattern)
         return self
     def sendline(self, line):
         self.child.sendline(line)
         return self
     def wait(self):
-        self.child.expect(pexpect.EOF)
-
-def exec_1pass(cmd):
-    child = OnePassCmd(TEST_VAULT, cmd)
-    return child
+        self.expect(pexpect.EOF)
 
 class OnePassTests(unittest.TestCase):
+    def exec_1pass(self, cmd):
+        return OnePassCmd(self, self.vault_path, cmd)
+
     def setUp(self):
-        if os.path.exists(TEST_VAULT):
-            shutil.rmtree(TEST_VAULT)
-    def testClient(self):
+        tmpdir = os.getenv('TMPDIR') or '/tmp'
+        self.vault_path = '%s/1pass-test-%d.agilekeychain' % (tmpdir, random.randint(0,2**16))
+        if os.path.exists(self.vault_path):
+            shutil.rmtree(self.vault_path)
+
+    def tearDown(self):
+        shutil.rmtree(self.vault_path)
+
+    def _createVault(self):
         # Setup a new vault
-        (exec_1pass('new')
-          .expect('Creating new vault.*' + TEST_VAULT)
+        (self.exec_1pass('new')
+          .expect('Creating new vault.*' + self.vault_path)
           .expect('Enter master password')
           .sendline(TEST_PASSWD)
           .expect('Re-enter master password')
           .sendline(TEST_PASSWD)
           .wait())
+        # Unlock vault
+        (self.exec_1pass('list')
+          .expect('Master password')
+          .sendline(TEST_PASSWD)
+          .wait())
+
+    def testLockUnlock(self):
+        self._createVault()
 
         # Ensure new vault is locked
-        (exec_1pass('lock')
+        (self.exec_1pass('lock')
           .wait())
 
         # List vault contents - should be empty
-        (exec_1pass('list')
+        (self.exec_1pass('list')
           .expect('Master password')
           .sendline(TEST_PASSWD)
           .wait())
 
         # List again, no password required
-        (exec_1pass('list')
+        (self.exec_1pass('list')
           .wait())
 
         # Lock vault
-        (exec_1pass('lock')
+        (self.exec_1pass('lock')
           .wait())
 
         # List again, password should
         # be requested
-        (exec_1pass('list')
+        (self.exec_1pass('list')
           .expect('Master password')
           .sendline(TEST_PASSWD)
           .wait())
 
+    def testAddEditItem(self):
+        self._createVault()
+
         # Add a new item to the vault
-        (exec_1pass('add login mysite')
+        (self.exec_1pass('add login mysite')
           .expect('username')
           .sendline('myuser')
           .expect('password')
@@ -104,14 +122,14 @@ class OnePassTests(unittest.TestCase):
           .wait())
 
         # Show the new item
-        (exec_1pass('show mysite')
+        (self.exec_1pass('show mysite')
           .expect('mysite.com')
           .expect('myuser')
           .expect('mypass')
           .wait())
 
         # Add a custom field to the new item
-        (exec_1pass('edit mysite')
+        (self.exec_1pass('edit mysite')
           .expect('Section')
           .sendline('CustomSection')
           .expect('Field')
@@ -121,7 +139,7 @@ class OnePassTests(unittest.TestCase):
           .wait())
 
         # Update the custom field
-        (exec_1pass('edit mysite')
+        (self.exec_1pass('edit mysite')
           .expect('Section')
           .sendline('1')
           .expect('Field')
@@ -130,66 +148,68 @@ class OnePassTests(unittest.TestCase):
           .sendline('NewCustomFieldValue')
           .wait())
 
-        (exec_1pass('show mysite')
+        (self.exec_1pass('show mysite')
           .expect('NewCustomFieldValue')
           .wait())
 
         # List the vault contents
-        (exec_1pass('list')
+        (self.exec_1pass('list')
           .expect('mysite')
           .wait())
 
         # List vault contents by type
-        (exec_1pass('list login')
+        (self.exec_1pass('list login')
           .expect('mysite')
           .wait())
 
         # List vault contents by type and pattern
-        (exec_1pass('list login:mys')
+        (self.exec_1pass('list login:mys')
           .expect('mysite')
           .wait())
-        (exec_1pass('list login:')
+        (self.exec_1pass('list login:')
           .expect('mysite')
           .wait())
 
         # Create a folder
-        (exec_1pass('add folder NewFolder')
+        (self.exec_1pass('add folder NewFolder')
           .wait())
-        (exec_1pass('list folder')
+        (self.exec_1pass('list folder')
           .expect('NewFolder')
           .wait())
 
         # Move the item to the folder
-        (exec_1pass('move mysite newfolder')
+        (self.exec_1pass('move mysite newfolder')
           .wait())
-        (exec_1pass('list-folder newfolder')
+        (self.exec_1pass('list-folder newfolder')
           .expect('mysite')
           .wait())
 
         # Remove the item from the folder
-        (exec_1pass('move mysite')
+        (self.exec_1pass('move mysite')
           .wait())
-        (exec_1pass('list-folder newfolder')
+        (self.exec_1pass('list-folder newfolder')
           .wait())
 
         # Remove the folder
-        (exec_1pass('remove newfolder')
+        (self.exec_1pass('remove newfolder')
           .expect("Remove 'NewFolder' from vault")
           .sendline('y')
           .wait())
 
         # Remove item
-        (exec_1pass('remove mysite')
+        (self.exec_1pass('remove mysite')
           .expect("Remove 'mysite' from vault")
           .sendline('y')
           .wait())
 
-        (exec_1pass('show mysite')
+        (self.exec_1pass('show mysite')
           .expect('No matching items')
           .wait())
 
-        # Change vault password
-        (exec_1pass('set-password')
+    def testChangePassword(self):
+        self._createVault()
+
+        (self.exec_1pass('set-password')
           .expect('Current master password')
           .sendline(TEST_PASSWD)
           .expect('New master password')
@@ -197,19 +217,19 @@ class OnePassTests(unittest.TestCase):
           .expect('Re-enter')
           .sendline('new-passwd')
           .wait())
-        (exec_1pass('lock')
+        (self.exec_1pass('lock')
           .wait())
-        (exec_1pass('show mysite')
+        (self.exec_1pass('show mysite')
           .expect('Master password')
           .sendline(TEST_PASSWD)
           .expect('Incorrect password')
           .wait())
-        (exec_1pass('show mysite')
+        (self.exec_1pass('show mysite')
           .expect('Master password')
           .sendline('new-passwd')
           .expect('No matching items')
           .wait())
-        (exec_1pass('lock')
+        (self.exec_1pass('lock')
           .wait())
 
 if __name__ == '__main__':
