@@ -195,6 +195,21 @@ class OnePassTests(unittest.TestCase):
          .expect('mysite.com')
          .wait())
 
+    def testTrashRestoreItem(self):
+        self._createVault()
+        self._addLoginItem('mysite', 'myuser', 'mypass', 'mysite.com')
+
+        (self.exec_1pass('trash mysite')
+         .wait())
+        (self.exec_1pass('list')
+         .expect('mysite.*(in trash)')
+         .wait())
+        (self.exec_1pass('restore mysite')
+         .wait())
+        (self.exec_1pass('list')
+         .expect('mysite')
+         .wait())
+
     def testFolder(self):
         self._createVault()
         self._addLoginItem('mysite', 'myuser', 'mypass', 'mysite.com')

@@ -777,12 +777,10 @@ func trashItems(vault *onepass.Vault, pattern string) {
 	}
 	for _, item := range items {
 		fmt.Printf("Send '%s' to the trash? Y/N\n", item.Title)
-		if readConfirmation() {
-			item.Trashed = true
-			err = item.Save()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Unable to trash item: %s\n", err)
-			}
+		item.Trashed = true
+		err = item.Save()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to trash item: %s\n", err)
 		}
 	}
 }
