@@ -4,6 +4,7 @@
 # pexpect to drive the client interactively
 
 from __future__ import print_function
+import clipboard
 import os
 import pexpect
 import random
@@ -269,6 +270,20 @@ class OnePassTests(unittest.TestCase):
         (self.exec_1pass('show mysite')
          .expect('Tags: anothertag')
          .wait())
+
+    def testCopy(self):
+        self._createVault()
+        self._addLoginItem('mysite', 'myuser', 'mypass', 'mysite.com')
+
+        clipboard.copy('')
+
+        (self.exec_1pass('copy mysite')
+         .wait())
+        self.assertEqual(clipboard.paste(), 'mypass')
+
+        (self.exec_1pass('copy mysite user')
+         .wait())
+        self.assertEqual(clipboard.paste(), 'myuser')
 
     def testChangePassword(self):
         self._createVault()
