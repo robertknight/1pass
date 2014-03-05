@@ -285,6 +285,35 @@ class OnePassTests(unittest.TestCase):
          .wait())
         self.assertEqual(clipboard.paste(), 'myuser')
 
+    def testExport(self):
+        self._createVault()
+        self._addLoginItem('mysite', 'myuser', 'mypass', 'mysite.com')
+        self._addLoginItem('anothersite', 'anotheruser', 'anotherpass', 'foo.com')
+        
+        exported_path = 'mysite-exported.1pif'
+
+        if os.path.exists(exported_path):
+            shutil.rmtree(exported_path)
+
+        (self.exec_1pass('export login mysite-exported')
+         .wait())
+
+        # FIXME - Daemon does not lock vault if it is removed
+        # and replaced with another at the same path
+        (self.exec_1pass('lock')
+         .wait())
+        shutil.rmtree(self.vault_path)
+
+        self._createVault()
+
+        (self.exec_1pass('import mysite-exported.1pif')
+         .expect("Imported item '.*'")
+         .expect("Imported item '.*'")
+         .wait())
+        (self.exec_1pass('show mysite')
+         .expect('mysite.com')
+         .wait())
+
     def testChangePassword(self):
         self._createVault()
 

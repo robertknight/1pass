@@ -116,12 +116,12 @@ var commandModes = []cmdmodes.Mode{
 	},
 	{
 		Command:     "export",
-		Description: "Export an item to a JSON file",
+		Description: "Export item to an unencrypted '1Password Interchange Format' directory",
 		ArgNames:    []string{"pattern", "path"},
 	},
 	{
 		Command:     "import",
-		Description: "Import an item from a JSON file",
+		Description: "Import an item from an unencrypted '1Password Interchange Format' file or directory",
 		ArgNames:    []string{"path"},
 	},
 	{
@@ -980,43 +980,32 @@ func exportItemTemplates(vault *onepass.Vault, pattern string) {
 	_, _ = os.Stdout.Write(prettyJson(data))
 }
 
-type ExportedItem struct {
-	Title   string              `json:"title"`
-	Type    string              `json:"type"`
-	Content onepass.ItemContent `json:"content"`
-}
-
-func exportItem(vault *onepass.Vault, pattern string, path string) {
-	item, err := lookupSingleItem(vault, pattern)
-	if err != nil {
-		os.Exit(1)
+func exportItems(vault *onepass.Vault, pattern string, path string) {
+	if !strings.HasSuffix(path, ".1pif") {
+		path += ".1pif"
 	}
-	content, err := item.Content()
+	items, err := lookupItems(vault, pattern)
 	if err != nil {
-		fatalErr(err, "Unable to read item content")
+		fatalErr(err, "Unable to lookup items")
 	}
-	exportedItem := ExportedItem{
-		Title:   item.Title,
-		Type:    item.TypeName,
-		Content: content,
-	}
-	err = jsonutil.WritePrettyFile(path, exportedItem)
+	err = onepass.ExportItems(items, path)
 	if err != nil {
-		fatalErr(err, fmt.Sprintf("Unable to save item to '%s'", path))
+		fatalErr(err, "Unable to export items")
 	}
 }
 
-func importItem(vault *onepass.Vault, path string) {
-	var exportedItem ExportedItem
-	err := jsonutil.ReadFile(path, &exportedItem)
+func importItems(vault *onepass.Vault, path string) {
+	items, err := onepass.ImportItems(path)
 	if err != nil {
-		fatalErr(err, fmt.Sprintf("Unable to read '%s'", path))
+		fatalErr(err, "Unable to import items")
 	}
-	item, err := vault.AddItem(exportedItem.Title, exportedItem.Type, exportedItem.Content)
-	if err != nil {
-		fatalErr(err, fmt.Sprintf("Unable to import item '%s'", exportedItem.Title))
+	for _, importedItem := range items {
+		item, err := vault.AddItem(importedItem.Title, importedItem.TypeName, importedItem.SecureContents)
+		if err != nil {
+			fatalErr(err, fmt.Sprintf("Unable to import item '%s'", importedItem.Title))
+		}
+		fmt.Printf("Imported item '%s' (%s)\n", item.Title, item.Uuid)
 	}
-	fmt.Printf("Imported item '%s' (%s)\n", item.Title, item.Uuid)
 }
 
 func listTag(vault *onepass.Vault, tag string) {
@@ -1190,7 +1179,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 		if err != nil {
 			fatalErr(err, "")
 		}
-		importItem(vault, path)
+		importItems(vault, path)
 
 	case "export":
 		var pattern string
@@ -1199,7 +1188,7 @@ func handleVaultCmd(vault *onepass.Vault, mode string, cmdArgs []string) {
 		if err != nil {
 			fatalErr(err, "")
 		}
-		exportItem(vault, pattern, path)
+		exportItems(vault, pattern, path)
 
 	case "export-item-templates":
 		var pattern string
