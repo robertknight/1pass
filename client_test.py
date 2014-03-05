@@ -275,7 +275,12 @@ class OnePassTests(unittest.TestCase):
         self._createVault()
         self._addLoginItem('mysite', 'myuser', 'mypass', 'mysite.com')
 
-        clipboard.copy('')
+        clipboard.copy('test')
+        if clipboard.paste() != 'test':
+            # running on a system without clipboard support
+            # (eg. Linux sans Xorg)
+            self.skipTest('Clipboard not supported')
+            return
 
         (self.exec_1pass('copy mysite')
          .wait())
