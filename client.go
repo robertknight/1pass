@@ -414,14 +414,7 @@ func addItem(vault *onepass.Vault, title string, shortTypeName string) {
 		fatalErr(fmt.Errorf("Unknown item type '%s'", shortTypeName), "")
 	}
 
-	// load item templates
-	templates := map[string]onepass.ItemTemplate{}
-	err := json.Unmarshal([]byte(itemTemplates), &templates)
-	if err != nil {
-		fatalErr(err, "Failed to read item templates")
-	}
-
-	template, ok := templates[typeName]
+	template, ok := onepass.StandardTemplate(typeName)
 	if !ok {
 		fatalErr(fmt.Errorf("No template for item type '%s'", shortTypeName), "")
 	}

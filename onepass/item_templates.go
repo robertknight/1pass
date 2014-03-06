@@ -1,8 +1,8 @@
-package main
+package onepass
 
 // map of item type -> default item template
 // for all of the basic item types
-const itemTemplates = `{
+const itemTemplateData = `{
   "identities.Identity": {
     "sections": [
       {

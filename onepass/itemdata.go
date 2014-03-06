@@ -1,8 +1,10 @@
 package onepass
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -369,4 +371,20 @@ func (item *ItemContent) UrlByPattern(pattern string) *ItemUrl {
 		}
 	}
 	return nil
+}
+
+var standardTemplates map[string]ItemTemplate
+var standardTemplateInit sync.Once
+
+// StandardTemplate returns an item content template
+// containing the standard fields for a given item type
+func StandardTemplate(typeName string) (template ItemTemplate, ok bool) {
+	standardTemplateInit.Do(func() {
+		err := json.Unmarshal([]byte(itemTemplateData), &standardTemplates)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to read template data %v", err))
+		}
+	})
+	template, ok = standardTemplates[typeName]
+	return
 }
