@@ -48,8 +48,10 @@ class OnePassCmd:
     def sendline(self, line):
         self.child.sendline(line)
         return self
-    def wait(self):
+    def wait(self, expect_status=0):
         self.expect(pexpect.EOF)
+        self.child.close()
+        self.test.assertEqual(self.child.exitstatus, expect_status)
 
 class OnePassTests(unittest.TestCase):
     def exec_1pass(self, cmd):
@@ -244,7 +246,7 @@ class OnePassTests(unittest.TestCase):
         # Check folder no longer exists
         (self.exec_1pass('list-folder newfolder')
           .expect('Failed to find folder')
-          .wait())
+          .wait(expect_status=1))
 
     def testTags(self):
         self._createVault()
@@ -336,7 +338,7 @@ class OnePassTests(unittest.TestCase):
           .expect('Master password')
           .sendline(TEST_PASSWD)
           .expect('Incorrect password')
-          .wait())
+          .wait(expect_status=1))
         (self.exec_1pass('show mysite')
           .expect('Master password')
           .sendline('new-passwd')
