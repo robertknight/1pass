@@ -913,9 +913,9 @@ func exportItemTemplates(vault *onepass.Vault, pattern string) {
 		fatalErr(err, "Unable to list vault items")
 	}
 
-	typeTemplates := map[string]onepass.ItemTemplate{}
+	typeTemplates := map[string]onepass.ItemContent{}
 	for _, item := range items {
-		typeTemplate := onepass.ItemTemplate{
+		typeTemplate := onepass.ItemContent{
 			Sections:   []onepass.ItemSection{},
 			FormFields: []onepass.WebFormField{},
 		}

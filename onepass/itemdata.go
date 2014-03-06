@@ -289,13 +289,6 @@ var FieldKindMap = map[string]FieldType{
 	"concealed": ConcealedField,
 }
 
-// template for a new item
-type ItemTemplate struct {
-	Sections   []ItemSection  `json:"sections"`
-	FormFields []WebFormField `json:"fields"`
-	Urls       []ItemUrl      `json:"URLs"`
-}
-
 func (item ItemContent) String() string {
 	result := ""
 	if len(item.Sections) > 0 {
@@ -373,12 +366,12 @@ func (item *ItemContent) UrlByPattern(pattern string) *ItemUrl {
 	return nil
 }
 
-var standardTemplates map[string]ItemTemplate
+var standardTemplates map[string]ItemContent
 var standardTemplateInit sync.Once
 
 // StandardTemplate returns an item content template
 // containing the standard fields for a given item type
-func StandardTemplate(typeName string) (template ItemTemplate, ok bool) {
+func StandardTemplate(typeName string) (template ItemContent, ok bool) {
 	standardTemplateInit.Do(func() {
 		err := json.Unmarshal([]byte(itemTemplateData), &standardTemplates)
 		if err != nil {
