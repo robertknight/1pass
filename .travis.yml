@@ -8,3 +8,6 @@ before_install:
  - sudo apt-get install -q xclip
 install:
  - "sudo pip install --requirement requirements.txt"
+
+after_failure:
+ - cat client_test.log
