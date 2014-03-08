@@ -10,6 +10,7 @@ import pexpect
 import random
 import shutil
 import sys
+import termios
 import unittest
 
 TEST_PASSWD = 'test-pwd'
@@ -28,6 +29,13 @@ class OnePassCmd:
         onepass_cmd = './1pass -low-security -vault %s %s' % (vault, cmd)
         print('Running %s' % onepass_cmd, file=test_log)
         self.child = pexpect.spawn(onepass_cmd)
+
+        # unset ONLCR flag
+        # disable conversion of '\n' to '\r\n' in child's output
+        attr = termios.tcgetattr(self.child.child_fd)
+        attr[1] &= ~termios.ONLCR
+        termios.tcsetattr(self.child.child_fd, termios.TCSANOW, attr)
+
         self.child.logfile = test_log
 
         # disable the delays that pexpect adds by default
@@ -45,9 +53,11 @@ class OnePassCmd:
         except pexpect.EOF:
             self.test.fail("Child exited before producing expected output '%s'" % pattern)
         return self
+
     def sendline(self, line):
         self.child.sendline(line)
         return self
+
     def wait(self, expect_status=0):
         self.expect(pexpect.EOF)
         self.child.close()
