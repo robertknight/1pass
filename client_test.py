@@ -324,8 +324,8 @@ class OnePassTests(unittest.TestCase):
         self._createVault()
 
         (self.exec_1pass('import mysite-exported.1pif')
-         .expect("Imported item '.*'")
-         .expect("Imported item '.*'")
+         .expect("Imported item '[^']+'")
+         .expect("Imported item '[^']+'")
          .wait())
         (self.exec_1pass('show mysite')
          .expect('mysite.com')
