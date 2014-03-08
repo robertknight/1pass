@@ -11,6 +11,11 @@ Supports:
  * Generating random passwords for new items
  * Copying item passwords and field values to the clipboard
 
+## Building
+
+ 1. [Install Go](http://golang.org/doc/install) and [set up your GOPATH and PATH environment variables](http://golang.org/doc/code.html#GOPATH)
+ 2. Run `go get github.com/robertknight/1pass`
+
 ## Setup
 
 Use one of the official 1Password apps to set up your 1Password vault and enable Dropbox syncing. The client works with the copy of the vault that is synced to Dropbox.
