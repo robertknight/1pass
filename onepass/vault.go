@@ -369,6 +369,19 @@ func (vault *Vault) Lock() {
 	}
 }
 
+// Returns the user-provided password hint text
+func (vault *Vault) PasswordHint() (string, error) {
+	hintFile, err := os.Open(vaultDataDir(vault.Path) + "/.password.hint")
+	if err != nil {
+		return "", err
+	}
+	hintText, err := ioutil.ReadAll(hintFile)
+	if err != nil {
+		return "", err
+	}
+	return string(hintText), nil
+}
+
 func saveEncryptionKeys(dataDir string, keyList encryptionKeys) (err error) {
 	err = jsonutil.WriteFile(dataDir+"/encryptionKeys.js", keyList)
 	if err != nil {

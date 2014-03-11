@@ -1411,7 +1411,11 @@ func main() {
 		err = agentClient.Unlock(string(masterPwd))
 		if err != nil {
 			if _, ok := err.(onepass.DecryptError); ok {
-				fmt.Fprintf(os.Stderr, "Incorrect password\n")
+				hint, err := vault.PasswordHint()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Unable to read password hint: %v\n", err)
+				}
+				fmt.Fprintf(os.Stderr, "Incorrect password (hint: %s)\n", hint)
 				os.Exit(1)
 			} else {
 				fatalErr(err, "Unable to unlock vault")
