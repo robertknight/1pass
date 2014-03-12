@@ -180,6 +180,10 @@ func writeConfig(config *clientConfig) {
 	_ = jsonutil.WriteFile(configPath, config)
 }
 
+func logItemAction(action string, item onepass.Item) {
+	fmt.Printf("%s '%s' (%s)\n", action, item.Title, item.Uuid[0:4])
+}
+
 // generate a random password with default settings
 // for length and characters
 func genDefaultPassword() string {
@@ -466,7 +470,7 @@ func addItem(vault *onepass.Vault, title string, shortTypeName string) {
 	if err != nil {
 		fatalErr(err, "Unable to add item")
 	}
-	fmt.Printf("Added new item '%s' (%s)\n", item.Title, item.Uuid)
+	logItemAction("Added new item", item)
 }
 
 func editItem(vault *onepass.Vault, pattern string) {
@@ -474,6 +478,8 @@ func editItem(vault *onepass.Vault, pattern string) {
 	if err != nil {
 		fatalErr(err, "Failed to find item")
 	}
+
+	logItemAction("Editing item", item)
 	content, err := item.Content()
 	if err != nil {
 		fatalErr(err, "Unable to read item content")
@@ -771,6 +777,7 @@ func moveItemsToFolder(vault *onepass.Vault, itemPattern string, folderPattern s
 		folder, err = lookupSingleItem(vault, folderPattern)
 	}
 	for _, item := range items {
+		logItemAction("Moving item", item)
 		item.FolderUuid = folder.Uuid
 		err = item.Save()
 		if err != nil {
@@ -802,7 +809,7 @@ func trashItems(vault *onepass.Vault, pattern string) {
 		fatalErr(err, "Unable to lookup items to trash")
 	}
 	for _, item := range items {
-		fmt.Printf("Send '%s' to the trash? Y/N\n", item.Title)
+		logItemAction("Trashing item", item)
 		item.Trashed = true
 		err = item.Save()
 		if err != nil {
@@ -817,6 +824,7 @@ func restoreItems(vault *onepass.Vault, pattern string) {
 		fatalErr(err, "Unable to lookup items to restore")
 	}
 	for _, item := range items {
+		logItemAction("Restoring item", item)
 		item.Trashed = false
 		err = item.Save()
 		if err != nil {
@@ -851,6 +859,7 @@ func renameItem(vault *onepass.Vault, pattern string, newTitle string) {
 	if err != nil {
 		fatalErr(err, "Failed to find item to rename")
 	}
+	logItemAction("Renaming item", item)
 	item.Title = newTitle
 	err = item.Save()
 	if err != nil {
@@ -981,6 +990,9 @@ func exportItems(vault *onepass.Vault, pattern string, path string) {
 	if err != nil {
 		fatalErr(err, "Unable to lookup items")
 	}
+	for _, item := range items {
+		logItemAction("Exporting item", item)
+	}
 	err = onepass.ExportItems(items, path)
 	if err != nil {
 		fatalErr(err, "Unable to export items")
@@ -997,7 +1009,7 @@ func importItems(vault *onepass.Vault, path string) {
 		if err != nil {
 			fatalErr(err, fmt.Sprintf("Unable to import item '%s'", importedItem.Title))
 		}
-		fmt.Printf("Imported item '%s' (%s)\n", item.Title, item.Uuid)
+		logItemAction("Imported item", item)
 	}
 }
 
@@ -1049,6 +1061,7 @@ func addTag(vault *onepass.Vault, pattern string, tag string) {
 			return item.OpenContents.Tags[i] == tag
 		})
 		if !hasTag {
+			logItemAction("Tagging item", item)
 			item.OpenContents.Tags = append(item.OpenContents.Tags, tag)
 			err = item.Save()
 			if err != nil {
@@ -1068,6 +1081,7 @@ func removeTag(vault *onepass.Vault, pattern string, tag string) {
 			return item.OpenContents.Tags[i] == tag
 		})
 		if hasTag {
+			logItemAction("Untagging item", item)
 			newTags := []string{}
 			for _, existingTag := range item.OpenContents.Tags {
 				if existingTag != tag {
