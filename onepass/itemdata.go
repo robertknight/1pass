@@ -95,7 +95,7 @@ func (field ItemField) ValueString() string {
 	case "string", "URL", "cctype", "phone", "gender", "email", "menu":
 		return defaultStr
 	default:
-		return fmt.Sprintf("(%s) %s", field.Kind, field.Value)
+		return defaultStr
 	}
 }
 
