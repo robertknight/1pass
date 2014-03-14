@@ -307,12 +307,13 @@ class OnePassTests(unittest.TestCase):
         self._addLoginItem('mysite', 'myuser', 'mypass', 'mysite.com')
         self._addLoginItem('anothersite', 'anotheruser', 'anotherpass', 'foo.com')
         
-        exported_path = 'mysite-exported.1pif'
+        export_dir = 'test'
+        exported_path = '%s/mysite-exported.1pif' % export_dir
 
         if os.path.exists(exported_path):
             shutil.rmtree(exported_path)
 
-        (self.exec_1pass('export login mysite-exported')
+        (self.exec_1pass('export login %s/mysite-exported' % export_dir)
          .wait())
 
         # FIXME - Daemon does not lock vault if it is removed
@@ -323,7 +324,7 @@ class OnePassTests(unittest.TestCase):
 
         self._createVault()
 
-        (self.exec_1pass('import mysite-exported.1pif')
+        (self.exec_1pass('import %s' % exported_path)
          .expect("Imported item '[^']+'")
          .expect("Imported item '[^']+'")
          .wait())
