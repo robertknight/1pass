@@ -310,6 +310,9 @@ class OnePassTests(unittest.TestCase):
         export_dir = 'test'
         exported_path = '%s/mysite-exported.1pif' % export_dir
 
+        if not os.path.exists(export_dir):
+            os.mkdir(export_dir)
+
         if os.path.exists(exported_path):
             shutil.rmtree(exported_path)
 
