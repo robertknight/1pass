@@ -4,6 +4,8 @@
 
 A command-line client for [1Password](https://agilebits.com/onepassword).
 
+**_If you're looking for a more featureful client with a graphical front-end, please follow development of the successor project, [passcards](https://github.com/robertknight/passcards)._**
+
 Supports:
  * Creating, opening and changing the master password for vaults
  * Listing, adding, updating and removing items in vaults
