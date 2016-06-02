@@ -35,8 +35,9 @@ import (
 	"time"
 	"unicode"
 
-	"code.google.com/p/go.crypto/pbkdf2"
+	"golang.org/x/crypto/pbkdf2"
 	uuid "github.com/nu7hatch/gouuid"
+
 	"github.com/robertknight/1pass/jsonutil"
 	"github.com/robertknight/1pass/plist"
 )
