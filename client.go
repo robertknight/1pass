@@ -14,7 +14,8 @@ import (
 	"syscall"
 	"time"
 
-	"code.google.com/p/go.crypto/ssh/terminal"
+	"golang.org/x/crypto/ssh/terminal"
+
 	"github.com/robertknight/1pass/cmdmodes"
 	"github.com/robertknight/1pass/jsonutil"
 	"github.com/robertknight/1pass/onepass"
