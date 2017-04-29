@@ -26,7 +26,7 @@ test_log = open('client_test.log', 'w')
 class OnePassCmd:
     def __init__(self, test, vault, cmd):
         self.test = test
-        onepass_cmd = './1pass -low-security -vault %s %s' % (vault, cmd)
+        onepass_cmd = 'sh -c "./1pass -low-security -vault %s %s"' % (vault, cmd)
         print('Running %s' % onepass_cmd, file=test_log)
         self.child = pexpect.spawn(onepass_cmd)
 
