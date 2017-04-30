@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"bytes"
 )
 
 type MarshalFunc func(interface{}) ([]byte, error)
@@ -28,7 +29,8 @@ func ReadFile(path string, out interface{}) error {
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(content, out)
+	filtered := bytes.Replace(content, []byte("\\u0000"), []byte{}, -1);
+ 	err = json.Unmarshal(filtered, out)
 	if err != nil {
 		return err
 	}
