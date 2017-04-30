@@ -16,11 +16,11 @@ import (
 
 	"golang.org/x/crypto/ssh/terminal"
 
+	"github.com/atotto/clipboard"
 	"github.com/robertknight/1pass/cmdmodes"
 	"github.com/robertknight/1pass/jsonutil"
 	"github.com/robertknight/1pass/onepass"
 	"github.com/robertknight/1pass/rangeutil"
-	"github.com/robertknight/clipboard"
 )
 
 var commandModes = []cmdmodes.Mode{
